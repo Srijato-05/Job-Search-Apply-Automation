@@ -35,3 +35,4 @@ JobAutomation/
 - **Stage 1 (Deep Research):** Complete
 - **Stage 2 (Planning):** Complete
 - **Stage 3 (Code & Test Cycles 1–7):** Ready to begin upon confirmation
+
