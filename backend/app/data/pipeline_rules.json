@@ -1,0 +1,38 @@
+{
+  "it_service_companies": [
+    "tcs", "tata consultancy services", "infosys", "wipro", "hcl",
+    "hcltech", "cognizant", "accenture", "capgemini", "tech mahindra",
+    "ltimindtree", "mphasis", "persistent systems", "coforge", "hexaware"
+  ],
+  "specific_team_domains": [
+    "Payments", "Data Platform", "AI / ML", "Search & Ads", "Security", "Mobile"
+  ],
+  "domain_cues": {
+    "Payments": "\\b(?:payments?|fintech|checkout|upi|ledger|billing|wallet|settlement)\\b",
+    "Data Platform": "\\b(?:data\\s+platform|etl|data\\s+pipeline|lakehouse|data\\s+warehouse|spark|airflow|dbt|snowflake|bigquery)\\b",
+    "AI / ML": "\\b(?:machine\\s+learning|llm|genai|nlp|computer\\s+vision|rag|inference)\\b",
+    "Frontend": "\\b(?:frontend|front-end|design\\s+system|ui\\s+platform|web\\s+app|dashboard|merchant\\s+dashboard|ui\\s+regression|react|angular|vue|tailwind)\\b",
+    "Platform / Infra": "\\b(?:infrastructure|platform\\s+engineering|sre|reliability|kubernetes|observability|ci/cd)\\b",
+    "Search & Ads": "\\b(?:search\\s+engine|recommendations?|ranking|relevance|ads\\s+platform)\\b",
+    "Security": "\\b(?:security|iam|appsec|infosec|cryptography|zero\\s+trust)\\b",
+    "Mobile": "\\b(?:android|ios|mobile\\s+app|react\\s+native|flutter)\\b",
+    "Backend": "\\b(?:backend|back-end|microservices|distributed\\s+systems|api\\s+services)\\b"
+  },
+  "domain_skill_map": {
+    "Data Platform": ["Apache Spark", "Apache Airflow", "Apache Flink", "dbt", "Snowflake", "BigQuery", "Redshift", "Databricks"],
+    "AI / ML": ["PyTorch", "TensorFlow", "Hugging Face", "LangChain", "RAG", "LLM", "NLP", "Computer Vision"],
+    "Frontend": ["React", "Next.js", "Angular", "Vue.js", "TypeScript", "Tailwind CSS", "Redux", "Playwright", "Vitest"],
+    "Platform / Infra": ["Kubernetes", "Terraform", "Docker", "Helm", "ArgoCD", "Prometheus", "Grafana"],
+    "Mobile": ["React Native", "Flutter", "Android", "iOS", "Kotlin", "Swift"]
+  },
+  "backend_fallback_skills": [
+    "FastAPI", "Django", "Flask", "Spring Boot", "Apache Kafka", "PostgreSQL", "Go"
+  ],
+  "enterprise_ats_domains": [
+    "myworkdayjobs", "workday", "smartrecruiters", "taleo", "successfactors", "icims", "brassring"
+  ],
+  "fast_apply_domains": [
+    "naukri", "instahyre", "hirist", "cutshort", "greenhouse", "lever.co", "ashbyhq", "wellfound", "indeed"
+  ]
+}
+

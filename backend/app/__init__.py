@@ -1,0 +1,2 @@
+"""JobAutomation backend application package."""
+

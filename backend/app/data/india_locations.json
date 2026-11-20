@@ -1,0 +1,67 @@
+{
+  "city_aliases": {
+    "Bengaluru": [
+      "bengaluru", "bangalore", "blr", "bengaluru urban", "bengaluru / bangalore",
+      "karnataka", "whitefield", "bellandur", "koramangala", "indiranagar",
+      "hsr layout", "marathahalli", "electronic city", "manyata tech park",
+      "outer ring road", "sarjapur", "jp nagar", "yelahanka", "bagmane"
+    ],
+    "Gurugram": [
+      "gurugram", "gurgaon", "cyber city", "cybercity", "dlf cyber",
+      "udyog vihar", "sohna road", "golf course road"
+    ],
+    "Noida": [
+      "noida", "greater noida", "noida expressway", "film city noida"
+    ],
+    "Delhi NCR": [
+      "delhi ncr", "delhi-ncr", "ncr", "new delhi", "delhi", "faridabad", "ghaziabad"
+    ],
+    "Hyderabad": [
+      "hyderabad", "hyd", "hitec city", "hitech city", "gachibowli", "madhapur",
+      "kondapur", "banjara hills", "jubilee hills", "secunderabad", "telangana"
+    ],
+    "Pune": [
+      "pune", "hinjewadi", "hinjawadi", "kharadi", "magarpatta", "baner",
+      "viman nagar", "wakad", "yerwada", "balewadi", "aundh"
+    ],
+    "Mumbai": [
+      "mumbai", "navi mumbai", "thane", "powai", "bkc", "bandra kurla",
+      "andheri", "lower parel", "goregaon", "malad", "airoli", "vikhroli", "worli"
+    ],
+    "Chennai": [
+      "chennai", "madras", "omr", "sholinganallur", "guindy", "taramani",
+      "siruseri", "thoraipakkam", "tamil nadu"
+    ],
+    "Kolkata": [
+      "kolkata", "calcutta", "salt lake", "sector v", "rajarhat", "new town"
+    ],
+    "Ahmedabad": ["ahmedabad", "gandhinagar", "gift city"],
+    "Kochi": ["kochi", "cochin", "infopark", "ernakulam", "kakkanad"],
+    "Jaipur": ["jaipur"],
+    "Indore": ["indore"],
+    "Chandigarh": ["chandigarh", "mohali", "panchkula"],
+    "Bhubaneswar": ["bhubaneswar"],
+    "Thiruvananthapuram": ["thiruvananthapuram", "trivandrum", "technopark"],
+    "Coimbatore": ["coimbatore"],
+    "Nagpur": ["nagpur"],
+    "Vadodara": ["vadodara", "baroda"],
+    "Surat": ["surat"],
+    "Mysuru": ["mysuru", "mysore"],
+    "Visakhapatnam": ["visakhapatnam", "vizag"],
+    "Remote (India)": [
+      "remote - india", "remote india", "india remote", "remote (india)",
+      "pan india", "work from home", "wfh"
+    ]
+  },
+  "office_localities": [
+    "Whitefield", "Bellandur", "Koramangala", "Indiranagar", "HSR Layout",
+    "Marathahalli", "Electronic City", "Outer Ring Road", "Sarjapur", "Bagmane",
+    "Manyata Tech Park", "Cyber City", "Udyog Vihar", "Golf Course Road",
+    "HITEC City", "Gachibowli", "Madhapur", "Kondapur", "Hinjewadi", "Kharadi",
+    "Magarpatta", "Baner", "Powai", "BKC", "Lower Parel", "Airoli",
+    "OMR", "Sholinganallur", "Guindy", "Taramani", "Salt Lake", "Sector V",
+    "Infopark", "GIFT City", "Technopark"
+  ],
+  "ncr_group": ["Delhi NCR", "Gurugram", "Noida"]
+}
+
