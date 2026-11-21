@@ -10,12 +10,17 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.collectors import router as collectors_router
 from app.api.jobs import router as jobs_router
 from app.api.resumes import router as resumes_router
 from app.api.vault import router as vault_router
+from app.api.watchlist import router as watchlist_router
+from app.collectors.manager import seed_watchlist
+from app.collectors.scheduler import CollectorScheduler
 from app.config import Settings, ensure_data_dirs, get_or_create_local_token
 from app.db.database import create_db_engine, init_db
 from app.resumes.embedder import EmbedderProtocol, FastEmbedService
+from sqlmodel import Session
 
 
 def create_app(
@@ -35,6 +40,12 @@ def create_app(
         dim=cfg.embedding_dim,
     )
 
+    # Seed default India tech watchlist on initial boot
+    with Session(engine) as session:
+        seed_watchlist(session)
+
+    scheduler = CollectorScheduler(settings=cfg, embedder=embedder_service)
+
     app = FastAPI(
         title="JobAutomation Local Backend",
         version="0.1.0",
@@ -43,6 +54,7 @@ def create_app(
     app.state.local_token = local_token
     app.state.engine = engine
     app.state.embedder = embedder_service
+    app.state.scheduler = scheduler
 
     @app.middleware("http")
     async def verify_local_token(request: Request, call_next):
@@ -72,6 +84,8 @@ def create_app(
     app.include_router(vault_router, prefix="/api/v1")
     app.include_router(resumes_router, prefix="/api/v1")
     app.include_router(jobs_router, prefix="/api/v1")
+    app.include_router(watchlist_router, prefix="/api/v1")
+    app.include_router(collectors_router, prefix="/api/v1")
 
     return app
 

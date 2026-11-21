@@ -1,0 +1,591 @@
+[
+  {
+    "slug": "razorpay",
+    "display_name": "Razorpay",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "razorpay" },
+    "is_watched": true
+  },
+  {
+    "slug": "postman",
+    "display_name": "Postman",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "postman" },
+    "is_watched": true
+  },
+  {
+    "slug": "meesho",
+    "display_name": "Meesho",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "meesho" },
+    "is_watched": true
+  },
+  {
+    "slug": "browserstack",
+    "display_name": "BrowserStack",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "browserstack" },
+    "is_watched": true
+  },
+  {
+    "slug": "cred",
+    "display_name": "CRED",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "cred" },
+    "is_watched": true
+  },
+  {
+    "slug": "swiggy",
+    "display_name": "Swiggy",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "swiggy" },
+    "is_watched": true
+  },
+  {
+    "slug": "groww",
+    "display_name": "Groww",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "groww" },
+    "is_watched": true
+  },
+  {
+    "slug": "freshworks",
+    "display_name": "Freshworks",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "freshworks" },
+    "is_watched": true
+  },
+  {
+    "slug": "chargebee",
+    "display_name": "Chargebee",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "chargebee" },
+    "is_watched": true
+  },
+  {
+    "slug": "clevertap",
+    "display_name": "CleverTap",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "clevertap" },
+    "is_watched": true
+  },
+  {
+    "slug": "hasura",
+    "display_name": "Hasura",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "hasura" },
+    "is_watched": true
+  },
+  {
+    "slug": "zepto",
+    "display_name": "Zepto",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "zepto" },
+    "is_watched": true
+  },
+  {
+    "slug": "apnahq",
+    "display_name": "Apna",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "apnahq" },
+    "is_watched": true
+  },
+  {
+    "slug": "khatabook",
+    "display_name": "Khatabook",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "khatabook" },
+    "is_watched": true
+  },
+  {
+    "slug": "innovaccer",
+    "display_name": "Innovaccer",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "innovaccer" },
+    "is_watched": true
+  },
+  {
+    "slug": "darwinbox",
+    "display_name": "Darwinbox",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "darwinbox" },
+    "is_watched": true
+  },
+  {
+    "slug": "druva",
+    "display_name": "Druva",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "druva" },
+    "is_watched": true
+  },
+  {
+    "slug": "inmobi",
+    "display_name": "InMobi",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "inmobi" },
+    "is_watched": true
+  },
+  {
+    "slug": "udaan",
+    "display_name": "Udaan",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "udaan" },
+    "is_watched": true
+  },
+  {
+    "slug": "atherenergy",
+    "display_name": "Ather Energy",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "atherenergy" },
+    "is_watched": true
+  },
+  {
+    "slug": "sliceit",
+    "display_name": "Slice",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "sliceit" },
+    "is_watched": true
+  },
+  {
+    "slug": "jupiter",
+    "display_name": "Jupiter",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "jupiter" },
+    "is_watched": true
+  },
+  {
+    "slug": "urbancompany",
+    "display_name": "Urban Company",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "urbancompany" },
+    "is_watched": true
+  },
+  {
+    "slug": "shiprocket",
+    "display_name": "Shiprocket",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "shiprocket" },
+    "is_watched": true
+  },
+  {
+    "slug": "classplus",
+    "display_name": "Classplus",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "classplus" },
+    "is_watched": true
+  },
+  {
+    "slug": "quizizz",
+    "display_name": "Quizizz",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "quizizz" },
+    "is_watched": true
+  },
+  {
+    "slug": "sharechat",
+    "display_name": "ShareChat",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "sharechat" },
+    "is_watched": true
+  },
+  {
+    "slug": "licious",
+    "display_name": "Licious",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "licious" },
+    "is_watched": true
+  },
+  {
+    "slug": "coinswitch",
+    "display_name": "CoinSwitch",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "coinswitch" },
+    "is_watched": true
+  },
+  {
+    "slug": "navi",
+    "display_name": "Navi",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "navi" },
+    "is_watched": true
+  },
+  {
+    "slug": "porter",
+    "display_name": "Porter",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "porter" },
+    "is_watched": true
+  },
+  {
+    "slug": "mpl",
+    "display_name": "Mobile Premier League (MPL)",
+    "employer_type": "direct_product",
+    "ats_type": "greenhouse",
+    "ats_config_json": { "board_token": "mpl" },
+    "is_watched": true
+  },
+  {
+    "slug": "atlassian",
+    "display_name": "Atlassian",
+    "employer_type": "direct_product",
+    "ats_type": "lever",
+    "ats_config_json": { "company_name": "atlassian" },
+    "is_watched": true
+  },
+  {
+    "slug": "rubrik",
+    "display_name": "Rubrik",
+    "employer_type": "direct_product",
+    "ats_type": "lever",
+    "ats_config_json": { "company_name": "rubrik" },
+    "is_watched": true
+  },
+  {
+    "slug": "confluent",
+    "display_name": "Confluent",
+    "employer_type": "direct_product",
+    "ats_type": "lever",
+    "ats_config_json": { "company_name": "confluent" },
+    "is_watched": true
+  },
+  {
+    "slug": "docker",
+    "display_name": "Docker",
+    "employer_type": "direct_product",
+    "ats_type": "lever",
+    "ats_config_json": { "company_name": "docker" },
+    "is_watched": true
+  },
+  {
+    "slug": "gitlab",
+    "display_name": "GitLab",
+    "employer_type": "direct_product",
+    "ats_type": "lever",
+    "ats_config_json": { "company_name": "gitlab" },
+    "is_watched": true
+  },
+  {
+    "slug": "fivetran",
+    "display_name": "Fivetran",
+    "employer_type": "direct_product",
+    "ats_type": "lever",
+    "ats_config_json": { "company_name": "fivetran" },
+    "is_watched": true
+  },
+  {
+    "slug": "databricks",
+    "display_name": "Databricks",
+    "employer_type": "direct_product",
+    "ats_type": "lever",
+    "ats_config_json": { "company_name": "databricks" },
+    "is_watched": true
+  },
+  {
+    "slug": "thoughtspot",
+    "display_name": "ThoughtSpot",
+    "employer_type": "direct_product",
+    "ats_type": "lever",
+    "ats_config_json": { "company_name": "thoughtspot" },
+    "is_watched": true
+  },
+  {
+    "slug": "nutanix",
+    "display_name": "Nutanix",
+    "employer_type": "direct_product",
+    "ats_type": "lever",
+    "ats_config_json": { "company_name": "nutanix" },
+    "is_watched": true
+  },
+  {
+    "slug": "cohesity",
+    "display_name": "Cohesity",
+    "employer_type": "direct_product",
+    "ats_type": "lever",
+    "ats_config_json": { "company_name": "cohesity" },
+    "is_watched": true
+  },
+  {
+    "slug": "falconx",
+    "display_name": "FalconX",
+    "employer_type": "direct_product",
+    "ats_type": "lever",
+    "ats_config_json": { "company_name": "falconx" },
+    "is_watched": true
+  },
+  {
+    "slug": "vercel",
+    "display_name": "Vercel",
+    "employer_type": "direct_product",
+    "ats_type": "lever",
+    "ats_config_json": { "company_name": "vercel" },
+    "is_watched": true
+  },
+  {
+    "slug": "posthog",
+    "display_name": "PostHog",
+    "employer_type": "direct_product",
+    "ats_type": "lever",
+    "ats_config_json": { "company_name": "posthog" },
+    "is_watched": true
+  },
+  {
+    "slug": "sourcegraph",
+    "display_name": "Sourcegraph",
+    "employer_type": "direct_product",
+    "ats_type": "lever",
+    "ats_config_json": { "company_name": "sourcegraph" },
+    "is_watched": true
+  },
+  {
+    "slug": "rippling",
+    "display_name": "Rippling",
+    "employer_type": "direct_product",
+    "ats_type": "ashby",
+    "ats_config_json": { "company_name": "rippling" },
+    "is_watched": true
+  },
+  {
+    "slug": "ramp",
+    "display_name": "Ramp",
+    "employer_type": "direct_product",
+    "ats_type": "ashby",
+    "ats_config_json": { "company_name": "ramp" },
+    "is_watched": true
+  },
+  {
+    "slug": "deel",
+    "display_name": "Deel",
+    "employer_type": "direct_product",
+    "ats_type": "ashby",
+    "ats_config_json": { "company_name": "deel" },
+    "is_watched": true
+  },
+  {
+    "slug": "linear",
+    "display_name": "Linear",
+    "employer_type": "direct_product",
+    "ats_type": "ashby",
+    "ats_config_json": { "company_name": "linear" },
+    "is_watched": true
+  },
+  {
+    "slug": "retool",
+    "display_name": "Retool",
+    "employer_type": "direct_product",
+    "ats_type": "ashby",
+    "ats_config_json": { "company_name": "retool" },
+    "is_watched": true
+  },
+  {
+    "slug": "notion",
+    "display_name": "Notion",
+    "employer_type": "direct_product",
+    "ats_type": "ashby",
+    "ats_config_json": { "company_name": "notion" },
+    "is_watched": true
+  },
+  {
+    "slug": "figma",
+    "display_name": "Figma",
+    "employer_type": "direct_product",
+    "ats_type": "ashby",
+    "ats_config_json": { "company_name": "figma" },
+    "is_watched": true
+  },
+  {
+    "slug": "openai",
+    "display_name": "OpenAI",
+    "employer_type": "direct_product",
+    "ats_type": "ashby",
+    "ats_config_json": { "company_name": "openai" },
+    "is_watched": true
+  },
+  {
+    "slug": "anysphere",
+    "display_name": "Cursor / Anysphere",
+    "employer_type": "direct_product",
+    "ats_type": "ashby",
+    "ats_config_json": { "company_name": "anysphere" },
+    "is_watched": true
+  },
+  {
+    "slug": "publicis-sapient",
+    "display_name": "Publicis Sapient",
+    "employer_type": "gcc",
+    "ats_type": "smartrecruiters",
+    "ats_config_json": { "company_id": "PublicisSapient" },
+    "is_watched": true
+  },
+  {
+    "slug": "delivery-hero",
+    "display_name": "Delivery Hero",
+    "employer_type": "direct_product",
+    "ats_type": "smartrecruiters",
+    "ats_config_json": { "company_id": "DeliveryHero" },
+    "is_watched": true
+  },
+  {
+    "slug": "bosch",
+    "display_name": "Bosch Group",
+    "employer_type": "gcc",
+    "ats_type": "smartrecruiters",
+    "ats_config_json": { "company_id": "BoschGroup" },
+    "is_watched": true
+  },
+  {
+    "slug": "ubisoft",
+    "display_name": "Ubisoft",
+    "employer_type": "direct_product",
+    "ats_type": "smartrecruiters",
+    "ats_config_json": { "company_id": "Ubisoft2" },
+    "is_watched": true
+  },
+  {
+    "slug": "visa",
+    "display_name": "Visa",
+    "employer_type": "gcc",
+    "ats_type": "smartrecruiters",
+    "ats_config_json": { "company_id": "Visa" },
+    "is_watched": true
+  },
+  {
+    "slug": "walmart-global-tech",
+    "display_name": "Walmart Global Tech",
+    "employer_type": "gcc",
+    "ats_type": "workday",
+    "ats_config_json": {
+      "tenant": "walmart",
+      "site": "WalmartExternal",
+      "instance": "wd5"
+    },
+    "is_watched": true
+  },
+  {
+    "slug": "salesforce",
+    "display_name": "Salesforce",
+    "employer_type": "direct_product",
+    "ats_type": "workday",
+    "ats_config_json": {
+      "tenant": "salesforce",
+      "site": "External_Career_Site",
+      "instance": "wd1"
+    },
+    "is_watched": true
+  },
+  {
+    "slug": "nvidia",
+    "display_name": "NVIDIA",
+    "employer_type": "direct_product",
+    "ats_type": "workday",
+    "ats_config_json": {
+      "tenant": "nvidia",
+      "site": "NVIDIAExternalCareerSite",
+      "instance": "wd5"
+    },
+    "is_watched": true
+  },
+  {
+    "slug": "adobe",
+    "display_name": "Adobe",
+    "employer_type": "direct_product",
+    "ats_type": "workday",
+    "ats_config_json": {
+      "tenant": "adobe",
+      "site": "external_experienced",
+      "instance": "wd5"
+    },
+    "is_watched": true
+  },
+  {
+    "slug": "cisco",
+    "display_name": "Cisco",
+    "employer_type": "gcc",
+    "ats_type": "workday",
+    "ats_config_json": {
+      "tenant": "cisco",
+      "site": "Cisco_Jobs",
+      "instance": "wd1"
+    },
+    "is_watched": true
+  },
+  {
+    "slug": "target",
+    "display_name": "Target in India",
+    "employer_type": "gcc",
+    "ats_type": "workday",
+    "ats_config_json": {
+      "tenant": "target",
+      "site": "targetcareers",
+      "instance": "wd1"
+    },
+    "is_watched": true
+  },
+  {
+    "slug": "intuit",
+    "display_name": "Intuit",
+    "employer_type": "direct_product",
+    "ats_type": "workday",
+    "ats_config_json": {
+      "tenant": "intuit",
+      "site": "Early_Career",
+      "instance": "wd5"
+    },
+    "is_watched": true
+  },
+  {
+    "slug": "mastercard",
+    "display_name": "Mastercard",
+    "employer_type": "gcc",
+    "ats_type": "workday",
+    "ats_config_json": {
+      "tenant": "mastercard",
+      "site": "CorporateCareers",
+      "instance": "wd1"
+    },
+    "is_watched": true
+  },
+  {
+    "slug": "paypal",
+    "display_name": "PayPal",
+    "employer_type": "direct_product",
+    "ats_type": "workday",
+    "ats_config_json": {
+      "tenant": "paypal",
+      "site": "PayPal-Jobs",
+      "instance": "wd1"
+    },
+    "is_watched": true
+  }
+]
+

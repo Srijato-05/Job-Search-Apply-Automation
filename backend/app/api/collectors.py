@@ -1,0 +1,142 @@
+"""Collector API endpoints for on-demand execution, telemetry runs, and source health."""
+
+from __future__ import annotations
+
+import logging
+from typing import Optional
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from sqlmodel import Session, select
+
+from app.api.deps import get_embedder, get_session, get_settings
+from app.collectors.manager import CollectorManager
+from app.config import Settings
+from app.db.models import CollectorRun, Company
+from app.resumes.embedder import EmbedderProtocol
+from app.schemas.collectors import (
+    CollectorHealthResponse,
+    CollectorRunRequest,
+    CollectorRunResponse,
+)
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/collectors", tags=["Collectors"])
+
+
+@router.post("/run", response_model=list[CollectorRunResponse])
+async def trigger_collector_run(
+    payload: CollectorRunRequest,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+    embedder: EmbedderProtocol = Depends(get_embedder),
+    background: bool = Query(default=False, description="Run in background asynchronously if True"),
+) -> list[CollectorRunResponse]:
+    """Manually initiate collection across 'all', 'ats', 'jobspy', or a specific company slug."""
+    manager = CollectorManager(settings=settings)
+    target = payload.source.strip().lower()
+
+    if background:
+        # Launch in background and return immediate acknowledgement
+        async def _run_bg():
+            # Create separate session for background execution
+            from app.db.database import create_db_engine
+            engine = create_db_engine(settings.db_path)
+            with Session(engine) as bg_session:
+                if target in ("all", "ats"):
+                    await manager.collect_all_watched(bg_session, embedder, force=payload.force)
+                if target in ("all", "jobspy"):
+                    await manager.jobspy.run(bg_session, embedder)
+
+        background_tasks.add_task(_run_bg)
+        return [
+            CollectorRunResponse(
+                source_name=f"collector_task:{target}",
+                status="started_in_background",
+                started_at=session.exec(select(CollectorRun)).first().started_at if session.exec(select(CollectorRun)).first() else __import__("app.db.models", fromlist=["utc_now"]).utc_now(),
+            )
+        ]
+
+    # Synchronous execution
+    results: list[CollectorRunResponse] = []
+
+    if target in ("all", "ats"):
+        ats_results = await manager.collect_all_watched(session, embedder, force=payload.force)
+        for r in ats_results:
+            results.append(
+                CollectorRunResponse(
+                    source_name="ats_batch",
+                    status=r.status,
+                    fetched_count=r.fetched_count,
+                    new_count=r.new_count,
+                    closed_count=r.closed_count,
+                    cooldown_until=r.cooldown_until,
+                    error_message=r.error_message,
+                    started_at=__import__("app.db.models", fromlist=["utc_now"]).utc_now(),
+                )
+            )
+
+    if target in ("all", "jobspy"):
+        jobspy_res = await manager.jobspy.run(session, embedder)
+        results.append(
+            CollectorRunResponse(
+                source_name="jobspy",
+                status=jobspy_res.status,
+                fetched_count=jobspy_res.fetched_count,
+                new_count=jobspy_res.new_count,
+                closed_count=jobspy_res.closed_count,
+                cooldown_until=jobspy_res.cooldown_until,
+                error_message=jobspy_res.error_message,
+                started_at=__import__("app.db.models", fromlist=["utc_now"]).utc_now(),
+            )
+        )
+
+    # Specific company slug target
+    if target not in ("all", "ats", "jobspy"):
+        company = session.exec(select(Company).where(Company.slug == target)).first()
+        if not company:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Company with slug '{target}' not found")
+
+        comp_res = await manager.collect_company(session, embedder, company, force=payload.force)
+        results.append(
+            CollectorRunResponse(
+                source_name=f"ats:{company.slug}",
+                company_slug=company.slug,
+                status=comp_res.status,
+                fetched_count=comp_res.fetched_count,
+                new_count=comp_res.new_count,
+                closed_count=comp_res.closed_count,
+                cooldown_until=comp_res.cooldown_until,
+                error_message=comp_res.error_message,
+                started_at=__import__("app.db.models", fromlist=["utc_now"]).utc_now(),
+            )
+        )
+
+    return results
+
+
+@router.get("/health", response_model=CollectorHealthResponse)
+def get_source_health(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> CollectorHealthResponse:
+    """Retrieve operational status, cooldown countdowns, and run stats across all sources."""
+    manager = CollectorManager(settings=settings)
+    return manager.get_health_overview(session)
+
+
+@router.get("/runs", response_model=list[CollectorRunResponse])
+def get_recent_runs(
+    session: Session = Depends(get_session),
+    limit: int = Query(default=50, ge=1, le=200),
+    source: Optional[str] = Query(default=None),
+) -> list[CollectorRun]:
+    """Retrieve historical collector telemetry runs."""
+    stmt = select(CollectorRun)
+    if source:
+        stmt = stmt.where(CollectorRun.source_name == source)
+
+    stmt = stmt.order_by(CollectorRun.id.desc()).limit(limit)  # type: ignore[attr-defined]
+    return list(session.exec(stmt).all())
+

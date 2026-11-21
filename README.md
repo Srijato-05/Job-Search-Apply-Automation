@@ -69,7 +69,7 @@ flowchart LR
 | **Cycle 1** | FastAPI loopback security (`X-Local-Token`, CORS), SQLite WAL + 10 tables + FTS5, India Fact Vault, PII Guardrails, 500+ skill/city taxonomy, Cover Templates, PDF Parser & `FastEmbed` ONNX vectorizer | **Implemented** *(9/9 tests passed)* |
 | **Cycle 2** | 5-Gate Pipeline: Gate 3 Boilerplate Stripper + 10-Field Extractor, Gate 1 Dealbreakers + Hidden Audit, Gate 2 4-Layer Sibling Role Identity + Side-by-Side JD Diff, Gate 4 Option 1 (`Tier S/A/B/C`) + Option 3 Semantic Bullet Proof + Cross-Resume Alerts, `/api/v1/jobs` API | **Implemented** *(All Cycle 2 logic & bug fixes complete)* |
 | **Cycle 2.5** | De-Hardcoding Refactor: 17 pipeline thresholds + CORS moved to `Settings`/`.env`; skills, cities & domain rules externalized to `backend/app/data/*.json` | **Implemented** *(16-test suite ready)* |
-| **Cycle 3** | Direct ATS JSON Collectors (Greenhouse, Lever, Ashby, SmartRecruiters, Workday CXS), `python-jobspy`, India Watchlist seed, `429/403` Circuit Breaker, Closed-Job Pruner, APScheduler | **Planned** |
+| **Cycle 3** | Direct ATS JSON Collectors (Greenhouse, Lever, Ashby, SmartRecruiters, Workday CXS), `python-jobspy`, India Watchlist seed, `429/403` Circuit Breaker, Closed-Job Pruner, Async Scheduler | **Implemented** *(10 new collector tests)* |
 | **Cycle 4** | Application Mini-CRM, Draft vs. Submitted tracking, Immutable Offline Snapshots, 30-Day Company Cooldowns, `/api/v1/extension/*` Bridge, ZIP Backup/Restore | **Planned** |
 | **Cycle 5** | Local React 19 + Vite + Tailwind Web Dashboard (`frontend/`) | **Planned** |
 | **Cycle 6** | Chromium Manifest V3 Extension (`chrome.sidePanel`), On-Demand DOM Harvester, Applied/Expired Watcher (`extension/`) | **Planned** |
@@ -87,6 +87,8 @@ All `/api/v1/*` routes require `X-Local-Token` (auto-generated in `data/.local_t
 | **Vault & Rules** | `GET / PUT /api/v1/vault`<br>`GET / POST / DELETE /api/v1/vault/qa-rules`<br>`POST /api/v1/vault/taxonomy/normalize`<br>`POST /api/v1/vault/templates/render` | Manage BGV-consistent India Fact Vault, PII-guarded Q&A rules, skill/city normalization, and deterministic cover templates |
 | **Multi-Resume** | `GET / POST /api/v1/resumes`<br>`GET / PATCH / DELETE /api/v1/resumes/{id}`<br>`GET /api/v1/resumes/{id}/file`<br>`POST /api/v1/resumes/{id}/reparse` | Upload PDF tracks, inspect verbatim bullets + 384-dim embeddings, stream raw PDFs, update track metadata, or re-vectorize |
 | **5-Gate Jobs** | `POST /api/v1/jobs/ingest`<br>`GET /api/v1/jobs`<br>`GET /api/v1/jobs/{id}`<br>`GET /api/v1/jobs/{id}/diff/{sibling_id}`<br>`PATCH /api/v1/jobs/{id}/status`<br>`POST /api/v1/jobs/rescore` | Run full 5-Gate ingestion, query by Tier / Resume Track / `fresh_6h` / `missing_max` / `friction` / `only_hidden` / FTS5 boolean search, diff sibling roles, or re-score |
+| **Watchlist** | `GET / POST /api/v1/watchlist`<br>`PATCH / DELETE /api/v1/watchlist/{slug}`<br>`POST /api/v1/watchlist/seed` | Manage watched companies, configure ATS feeds (Greenhouse, Lever, Ashby, SmartRecruiters, Workday), and sync 68 pre-seeded Indian tech companies |
+| **Collectors & Health** | `POST /api/v1/collectors/run`<br>`GET /api/v1/collectors/health`<br>`GET /api/v1/collectors/runs` | Manually trigger collection across all/ATS/JobSpy/slug, inspect circuit-breaker cooldown countdowns and source health badges, and view execution telemetry |
 
 ---
 
@@ -102,7 +104,7 @@ python -m venv .venv
 # 2. Optional: create .env from template to tune any of the 17 pipeline thresholds
 Copy-Item .env.example .env
 
-# 3. Run the full automated backend test suite (16 tests; first run caches ~90 MB ONNX model)
+# 3. Run the full automated backend test suite (26 tests; first run caches ~90 MB ONNX model)
 .\.venv\Scripts\pytest.exe backend\tests -v
 
 # 4. Start the local FastAPI backend (Swagger UI available at http://127.0.0.1:8000/docs)

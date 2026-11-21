@@ -1,6 +1,6 @@
 # File-Wise Implementation Inventory
 
-Complete inventory of every implemented file across the repository as of **Cycle 2.5**.
+Complete inventory of every implemented file across the repository as of **Cycle 3**.
 
 ---
 
@@ -29,6 +29,7 @@ Complete inventory of every implemented file across the repository as of **Cycle
 | [india_locations.json](file:///f:/Projects/JobAutomation/backend/app/data/india_locations.json) | Editable Indian geography | `city_aliases` (22+Remote), `office_localities` (35 hubs), `ncr_group` | `test_config_and_data.py` |
 | [skills_taxonomy.json](file:///f:/Projects/JobAutomation/backend/app/data/skills_taxonomy.json) | Editable tech skill taxonomy | `core_languages` (15), `ambiguous_lowercase_aliases`, `skill_synonym_groups` (500+ aliases) | `test_config_and_data.py` |
 | [pipeline_rules.json](file:///f:/Projects/JobAutomation/backend/app/data/pipeline_rules.json) | Editable extractor heuristics | `it_service_companies`, `domain_cues`, `domain_skill_map`, `enterprise_ats_domains`, `fast_apply_domains` | `test_config_and_data.py` |
+| [watchlist_seed.json](file:///f:/Projects/JobAutomation/backend/app/data/watchlist_seed.json) | 68 Pre-seeded India Tech companies | ATS provider config for Greenhouse, Lever, Ashby, SmartRecruiters, Workday | `test_collectors.py` |
 
 ---
 
@@ -65,28 +66,51 @@ Complete inventory of every implemented file across the repository as of **Cycle
 
 ---
 
-## 6. Pydantic Schemas & REST Routers (`backend/app/schemas/`, `backend/app/api/`)
+## 6. Job Collectors & Scheduler (`backend/app/collectors/`)
+
+| File | Responsibility | Key Symbols | Tests |
+| :--- | :--- | :--- | :--- |
+| [location_filter.py](file:///f:/Projects/JobAutomation/backend/app/collectors/location_filter.py) | Indian location normalizer & foreign filter | `is_india_location`, `_FOREIGN_COUNTRY_RE` | `test_collectors.py` |
+| [base.py](file:///f:/Projects/JobAutomation/backend/app/collectors/base.py) | Collector base & circuit breaker | `BaseCollector`, `CollectorResult`, `trip_circuit_breaker`, `get_active_cooldown` | `test_collectors.py` |
+| [ats_greenhouse.py](file:///f:/Projects/JobAutomation/backend/app/collectors/ats_greenhouse.py) | Greenhouse API connector | `fetch_greenhouse_jobs` | `test_collectors.py` |
+| [ats_lever.py](file:///f:/Projects/JobAutomation/backend/app/collectors/ats_lever.py) | Lever API connector | `fetch_lever_jobs` | `test_collectors.py` |
+| [ats_ashby.py](file:///f:/Projects/JobAutomation/backend/app/collectors/ats_ashby.py) | Ashby API connector | `fetch_ashby_jobs` | `test_collectors.py` |
+| [ats_smartrecruiters.py](file:///f:/Projects/JobAutomation/backend/app/collectors/ats_smartrecruiters.py) | SmartRecruiters API connector | `fetch_smartrecruiters_jobs` | `test_collectors.py` |
+| [ats_workday.py](file:///f:/Projects/JobAutomation/backend/app/collectors/ats_workday.py) | Workday CXS connector (limit <= 20) | `fetch_workday_jobs`, `_build_workday_cxs_base_url` | `test_collectors.py` |
+| [pruner.py](file:///f:/Projects/JobAutomation/backend/app/collectors/pruner.py) | Vanished job pruner | `prune_closed_ats_jobs` | `test_collectors.py` |
+| [jobspy_collector.py](file:///f:/Projects/JobAutomation/backend/app/collectors/jobspy_collector.py) | Aggregator scraper (JobSpy) | `JobSpyCollector`, polite jitter, query rotation | `test_collectors.py` |
+| [manager.py](file:///f:/Projects/JobAutomation/backend/app/collectors/manager.py) | Coordinator & health aggregator | `CollectorManager`, `seed_watchlist` | `test_collectors.py` |
+| [scheduler.py](file:///f:/Projects/JobAutomation/backend/app/collectors/scheduler.py) | Periodic async background loop | `CollectorScheduler` | Lifecycle |
+
+---
+
+## 7. Pydantic Schemas & REST Routers (`backend/app/schemas/`, `backend/app/api/`)
 
 | File | Responsibility | Key Endpoints / DTOs | Tests |
 | :--- | :--- | :--- | :--- |
 | [schemas/vault.py](file:///f:/Projects/JobAutomation/backend/app/schemas/vault.py) | Fact Vault & Q&A contracts | `FactVaultPayload`, `FactVaultResponse`, `QARuleCreate`, `QARuleResponse`, `TaxonomyNormalizeRequest/Response` | `test_vault_and_taxonomy.py` |
 | [schemas/resumes.py](file:///f:/Projects/JobAutomation/backend/app/schemas/resumes.py) | Resume registry contracts | `ResumeSummaryResponse`, `ResumeDetailResponse`, `ResumeBulletResponse`, `ResumeUpdatePayload` | `test_resumes_and_embeddings.py` |
 | [schemas/jobs.py](file:///f:/Projects/JobAutomation/backend/app/schemas/jobs.py) | Jobs, Scores & Diff contracts | `JobIngestItem`, `JobIngestBatchRequest`, `JobCardResponse`, `JobDetailResponse`, `JobDiffResponse`, `JobStatusUpdate` | `test_pipeline_and_jobs.py` |
+| [schemas/watchlist.py](file:///f:/Projects/JobAutomation/backend/app/schemas/watchlist.py) | Company & Watchlist contracts | `CompanyCreate`, `CompanyUpdate`, `CompanyResponse`, `WatchlistSeedResponse` | `test_collectors.py` |
+| [schemas/collectors.py](file:///f:/Projects/JobAutomation/backend/app/schemas/collectors.py) | Telemetry & Health contracts | `CollectorRunRequest`, `CollectorRunResponse`, `SourceHealthItem`, `CollectorHealthResponse` | `test_collectors.py` |
 | [api/deps.py](file:///f:/Projects/JobAutomation/backend/app/api/deps.py) | FastAPI dependency injectors | `get_settings`, `get_engine`, `get_embedder`, `get_session` | All API tests |
 | [api/vault.py](file:///f:/Projects/JobAutomation/backend/app/api/vault.py) | Vault, Q&A & Taxonomy API | `GET/PUT /vault`, `GET/POST/DELETE /vault/qa-rules`, `POST /vault/taxonomy/normalize`, `POST /vault/templates/render` | `test_vault_and_taxonomy.py` |
 | [api/resumes.py](file:///f:/Projects/JobAutomation/backend/app/api/resumes.py) | Multi-Resume PDF API | `GET/POST /resumes`, `GET/PATCH/DELETE /resumes/{id}`, `GET /resumes/{id}/file`, `POST /resumes/{id}/reparse` | `test_resumes_and_embeddings.py` |
 | [api/jobs.py](file:///f:/Projects/JobAutomation/backend/app/api/jobs.py) | Jobs Queue, Filter & Diff API | `POST /jobs/ingest`, `GET /jobs`, `GET /jobs/{id}`, `GET /jobs/{id}/diff/{sibling_id}`, `PATCH /jobs/{id}/status`, `POST /jobs/rescore` | `test_pipeline_and_jobs.py` |
+| [api/watchlist.py](file:///f:/Projects/JobAutomation/backend/app/api/watchlist.py) | Watchlist Management API | `GET/POST /watchlist`, `PATCH/DELETE /watchlist/{slug}`, `POST /watchlist/seed` | `test_collectors.py` |
+| [api/collectors.py](file:///f:/Projects/JobAutomation/backend/app/api/collectors.py) | Collector Trigger & Health API | `POST /collectors/run`, `GET /collectors/health`, `GET /collectors/runs` | `test_collectors.py` |
 
 ---
 
-## 7. Automated Test Suite (`backend/tests/` — 16 Tests Across 5 Files)
+## 8. Automated Test Suite (`backend/tests/` — 26 Tests Across 6 Files)
 
 | File | Tests Count | Scope Covered |
-| :--- | :---: | :--- |
+| :--- | :--- | :--- |
 | [conftest.py](file:///f:/Projects/JobAutomation/backend/tests/conftest.py) | Fixture module | `DeterministicTestEmbedder`, `real_fastembed_service`, ReportLab PDF generators, isolated `tmp_path` app client |
 | [test_security_and_db.py](file:///f:/Projects/JobAutomation/backend/tests/test_security_and_db.py) | 3 | WAL + FKs + 10 tables, FTS5 insert/update/delete & boolean query, `X-Local-Token` auth + CORS |
 | [test_vault_and_taxonomy.py](file:///f:/Projects/JobAutomation/backend/tests/test_vault_and_taxonomy.py) | 4 | Vault CRUD & bounds, PII Guardrails, 500+ skill taxonomy & cities, deterministic cover templates |
 | [test_resumes_and_embeddings.py](file:///f:/Projects/JobAutomation/backend/tests/test_resumes_and_embeddings.py) | 2 | Full Resume PDF upload/download/patch/reparse/cascade-delete + real `BAAI/bge-small-en-v1.5` semantic ranking |
 | [test_pipeline_and_jobs.py](file:///f:/Projects/JobAutomation/backend/tests/test_pipeline_and_jobs.py) | 4 | Boilerplate strip + 10-field extraction, Gate 1 audit/unhide, Gate 2 sibling roles + diff, Gate 4 Option 1+3 routing + alerts + Gate 5 filters |
 | [test_config_and_data.py](file:///f:/Projects/JobAutomation/backend/tests/test_config_and_data.py) | 3 | JSON file loading, `Settings` threshold override checks on Gate 1, Gate 4, and `orchestrator.ingest_job` |
+| [test_collectors.py](file:///f:/Projects/JobAutomation/backend/tests/test_collectors.py) | 10 | Location filtering, Watchlist seeding/CRUD, Greenhouse/Lever/Ashby/SmartRecruiters/Workday connectors, 429 circuit breaker, closed-job pruner, end-to-end manager & health |
 

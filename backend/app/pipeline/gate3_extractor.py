@@ -460,11 +460,13 @@ def extract_job_signals(
     friction = _classify_apply_friction(portal_name, job_url, apply_url, meta)
     emp_type = _classify_employer_type(company_name, raw_description)
 
+    comp_slug = str(meta.get("company_slug") or "").strip().lower() or slugify_company(company_name)
+
     return ExtractedJobSignals(
         raw_title=title.strip(),
         normalized_title=normalize_job_title(title),
         company_name=company_name.strip(),
-        company_slug=slugify_company(company_name),
+        company_slug=comp_slug,
         boilerplate_stripped_text=clean_text,
         requirement_lines=req_lines,
         primary_skills=primary_skills,
