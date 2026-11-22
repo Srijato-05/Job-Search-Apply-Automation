@@ -154,6 +154,12 @@ class CollectorManager:
                     error_message=f"HTTP {status_code} triggered cooldown: {http_err}",
                     cooldown_until=tripped_run.cooldown_until,
                 )
+            elif status_code == 404:
+                msg = f"HTTP 404 (ATS board/endpoint not found) for {company.slug}: {http_err}"
+                logger.warning(msg)
+                res = CollectorResult(status="invalid_config", error_message=msg)
+                collector.record_run_finish(session, run_record, res)
+                return res
             else:
                 logger.error(f"HTTP error polling {company.slug}: {http_err}")
                 res = CollectorResult(status="error", error_message=str(http_err))
@@ -214,34 +220,160 @@ class CollectorManager:
         collector.record_run_finish(session, run_record, final_res)
         return final_res
 
+    async def _fetch_company_raw(
+        self,
+        company: Company,
+        client: httpx.AsyncClient,
+    ) -> list[RawJobInput]:
+        """Dispatch HTTP fetch to the appropriate ATS connector."""
+        ats_type = (company.ats_type or "").lower().strip()
+        cfg = company.ats_config_json or {}
+        if ats_type == "greenhouse":
+            return await fetch_greenhouse_jobs(client, cfg.get("board_token") or company.slug, company.display_name)
+        if ats_type == "lever":
+            return await fetch_lever_jobs(client, cfg.get("company_name") or company.slug, company.display_name)
+        if ats_type == "ashby":
+            return await fetch_ashby_jobs(client, cfg.get("company_name") or company.slug, company.display_name)
+        if ats_type == "smartrecruiters":
+            return await fetch_smartrecruiters_jobs(client, cfg.get("company_id") or company.slug, company.display_name)
+        if ats_type == "workday":
+            return await fetch_workday_jobs(
+                client,
+                cfg.get("tenant") or company.slug,
+                cfg.get("site") or "careers",
+                company.display_name,
+                instance=cfg.get("instance"),
+            )
+        raise ValueError(f"Unsupported ATS type '{ats_type}' for {company.display_name}")
+
     async def collect_all_watched(
         self,
         session: Session,
         embedder: EmbedderProtocol,
         force: bool = False,
     ) -> list[CollectorResult]:
-        """Iterate all watched companies and execute ATS polling sequentially with polite pauses."""
-        watched = session.exec(
-            select(Company).where(
-                Company.is_watched.is_(True),
-                Company.is_blacklisted.is_(False),
-                Company.ats_type.is_not(None),  # type: ignore[attr-defined]
-            )
-        ).all()
-
-        results: list[CollectorResult] = []
-        async with httpx.AsyncClient(timeout=25.0, follow_redirects=True) as client:
-            for comp in watched:
-                res = await self.collect_company(
-                    session=session,
-                    embedder=embedder,
-                    company=comp,
-                    client=client,
-                    force=force,
+        """Fetch watched ATS feeds concurrently (bounded by Semaphore), then ingest/prune safely."""
+        watched = list(
+            session.exec(
+                select(Company).where(
+                    Company.is_watched.is_(True),
+                    Company.is_blacklisted.is_(False),
+                    Company.ats_type.is_not(None),  # type: ignore[attr-defined]
                 )
+            ).all()
+        )
+        if not watched:
+            return []
+
+        sem = asyncio.Semaphore(max(1, self.settings.collector_max_concurrency))
+        timeout = max(5.0, float(self.settings.ats_http_timeout_sec))
+
+        # Pre-check cooldowns sequentially on the DB session before dispatching HTTP
+        eligible: list[tuple[Company, BaseCollector, CollectorRun]] = []
+        results: list[CollectorResult] = []
+        for comp in watched:
+            ats_type = (comp.ats_type or "").lower().strip()
+            collector = BaseCollector(source_name=f"ats_{ats_type}", settings=self.settings)
+            if not force:
+                cooldown_until = collector.get_active_cooldown(session, company_slug=comp.slug)
+                if cooldown_until:
+                    results.append(
+                        CollectorResult(
+                            status="cooldown",
+                            error_message=f"Company '{comp.display_name}' is in circuit-breaker cooldown until {cooldown_until.isoformat()}.",
+                            cooldown_until=cooldown_until,
+                        )
+                    )
+                    continue
+            run_record = collector.record_run_start(session, company_slug=comp.slug)
+            eligible.append((comp, collector, run_record))
+
+        async def _bounded_fetch(comp: Company, client: httpx.AsyncClient):
+            async with sem:
+                try:
+                    return comp, await self._fetch_company_raw(comp, client), None
+                except Exception as exc:
+                    return comp, None, exc
+
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            fetched_outcomes = await asyncio.gather(
+                *(_bounded_fetch(comp, client) for comp, _, _ in eligible)
+            )
+
+        # Ingest, prune, and record telemetry sequentially on the SQLite session
+        for (comp, collector, run_record), (_, raw_jobs, err) in zip(eligible, fetched_outcomes):
+            if err is not None:
+                if isinstance(err, httpx.HTTPStatusError):
+                    code = err.response.status_code
+                    if code in (429, 403):
+                        tripped = collector.trip_circuit_breaker(
+                            session=session,
+                            reason=f"HTTP {code} on {comp.slug}: {err}",
+                            company_slug=comp.slug,
+                            existing_run=run_record,
+                        )
+                        results.append(
+                            CollectorResult(
+                                status="cooldown",
+                                error_message=f"HTTP {code} triggered cooldown: {err}",
+                                cooldown_until=tripped.cooldown_until,
+                            )
+                        )
+                        continue
+                    if code == 404:
+                        res = CollectorResult(
+                            status="invalid_config",
+                            error_message=f"HTTP 404 (ATS board/endpoint not found) for {comp.slug}: {err}",
+                        )
+                        collector.record_run_finish(session, run_record, res)
+                        results.append(res)
+                        continue
+                res = CollectorResult(status="error", error_message=str(err))
+                collector.record_run_finish(session, run_record, res)
                 results.append(res)
-                # Polite interval between companies
-                await asyncio.sleep(1.0)
+                continue
+
+            jobs_list = raw_jobs or []
+            new_count = 0
+            active_ext_ids: set[str] = set()
+            active_urls: set[str] = set()
+            for raw_job in jobs_list:
+                if comp.slug:
+                    raw_job.portal_metadata["company_slug"] = comp.slug
+                if raw_job.external_job_id:
+                    active_ext_ids.add(raw_job.external_job_id)
+                if raw_job.job_url:
+                    active_urls.add(raw_job.job_url)
+                try:
+                    ingest_res = ingest_job(
+                        session=session,
+                        raw=raw_job,
+                        embedder=embedder,
+                        settings=self.settings,
+                    )
+                    if ingest_res.action in ("new_role", "sibling_role", "created_new", "created_sibling"):
+                        new_count += 1
+                except Exception as ingest_err:
+                    logger.error(f"Failed to ingest job '{raw_job.title}': {ingest_err}")
+
+            closed_count = (
+                prune_closed_ats_jobs(
+                    session=session,
+                    company_slug=comp.slug,
+                    active_external_ids=active_ext_ids,
+                    active_urls=active_urls,
+                )
+                if jobs_list
+                else 0
+            )
+            final_res = CollectorResult(
+                fetched_count=len(jobs_list),
+                new_count=new_count,
+                closed_count=closed_count,
+                status="ok",
+            )
+            collector.record_run_finish(session, run_record, final_res)
+            results.append(final_res)
 
         return results
 
@@ -280,7 +412,7 @@ class CollectorManager:
                 status = last_run.status
                 if status == "ok":
                     healthy_count += 1
-                elif status in ("error", "failed"):
+                elif status in ("error", "failed", "invalid_config"):
                     error_count += 1
             else:
                 healthy_count += 1

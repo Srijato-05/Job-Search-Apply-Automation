@@ -32,7 +32,12 @@ class Settings(BaseSettings):
     # Collector & Cooldown Settings
     jobspy_min_delay_sec: int = 4
     jobspy_max_delay_sec: int = 8
+    jobspy_default_sites: str = "naukri,linkedin,indeed,glassdoor,google"
     circuit_breaker_cooldown_hours: int = 8
+    collector_interval_hours: int = 4
+    collector_max_concurrency: int = 5
+    ats_http_timeout_sec: float = 15.0
+    enable_background_scheduler: bool = True
     max_company_apps_30d: int = 3
 
     # 5-Gate Pipeline Thresholds (Tunable without code edits)
@@ -63,6 +68,10 @@ class Settings(BaseSettings):
             if cleaned and cleaned not in origins:
                 origins.append(cleaned)
         return origins
+
+    @property
+    def jobspy_sites_list(self) -> list[str]:
+        return [s.strip().lower() for s in self.jobspy_default_sites.split(",") if s.strip()]
 
     @property
     def db_path(self) -> Path:

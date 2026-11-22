@@ -11,22 +11,27 @@ _LOCATIONS_FILE = Path(__file__).resolve().parents[1] / "data" / "india_location
 
 _CITY_ALIASES: dict[str, list[str]] = {}
 _ALL_INDIA_PATTERNS: list[re.Pattern[str]] = []
-_FOREIGN_COUNTRY_RE = re.compile(
-    r"\b(united states|usa|united kingdom|london|canada|germany|berlin|poland|"
-    r"singapore|australia|sydney|melbourne|france|paris|netherlands|amsterdam|"
-    r"ireland|dublin|japan|tokyo|brazil|mexico|israel|tel aviv|spain|madrid|barcelona|"
-    r"switzerland|zurich|austria|vienna|sweden|stockholm)\b",
-    re.IGNORECASE,
-)
+_DEFAULT_FOREIGN_LOCATIONS = [
+    "united states", "usa", "united kingdom", "london", "canada", "germany",
+    "berlin", "poland", "singapore", "australia", "sydney", "melbourne",
+    "france", "paris", "netherlands", "amsterdam", "ireland", "dublin",
+    "japan", "tokyo", "brazil", "mexico", "israel", "tel aviv", "spain",
+    "madrid", "barcelona", "switzerland", "zurich", "austria", "vienna",
+    "sweden", "stockholm",
+]
+_FOREIGN_COUNTRY_RE: Optional[re.Pattern[str]] = None
 
 
 def _load_locations() -> None:
-    global _CITY_ALIASES, _ALL_INDIA_PATTERNS
-    if _CITY_ALIASES:
+    global _CITY_ALIASES, _ALL_INDIA_PATTERNS, _FOREIGN_COUNTRY_RE
+    if _CITY_ALIASES and _FOREIGN_COUNTRY_RE is not None:
         return
+    foreign_list = _DEFAULT_FOREIGN_LOCATIONS
     if _LOCATIONS_FILE.exists():
         data = json.loads(_LOCATIONS_FILE.read_text(encoding="utf-8"))
         _CITY_ALIASES = data.get("city_aliases", {})
+        if isinstance(data.get("excluded_foreign_locations"), list) and data["excluded_foreign_locations"]:
+            foreign_list = [str(x).strip() for x in data["excluded_foreign_locations"] if str(x).strip()]
     else:
         _CITY_ALIASES = {
             "Bengaluru": ["bengaluru", "bangalore", "blr"],
@@ -38,6 +43,11 @@ def _load_locations() -> None:
             "Chennai": ["chennai"],
             "Delhi NCR": ["delhi", "delhi ncr", "new delhi"],
         }
+
+    _FOREIGN_COUNTRY_RE = re.compile(
+        r"\b(" + "|".join(re.escape(loc) for loc in foreign_list) + r")\b",
+        re.IGNORECASE,
+    )
 
     patterns: list[re.Pattern[str]] = []
     # Match explicitly "India" or "IN"
@@ -95,5 +105,5 @@ def is_india_location(location_str: str) -> tuple[bool, str]:
 
 
 def _FOREIGN_FOREIGN_MATCH(text: str) -> bool:
-    return bool(_FOREIGN_COUNTRY_RE.search(text))
+    return bool(_FOREIGN_COUNTRY_RE and _FOREIGN_COUNTRY_RE.search(text))
 

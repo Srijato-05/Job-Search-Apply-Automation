@@ -62,6 +62,14 @@
     "OMR", "Sholinganallur", "Guindy", "Taramani", "Salt Lake", "Sector V",
     "Infopark", "GIFT City", "Technopark"
   ],
-  "ncr_group": ["Delhi NCR", "Gurugram", "Noida"]
+  "ncr_group": ["Delhi NCR", "Gurugram", "Noida"],
+  "excluded_foreign_locations": [
+    "united states", "usa", "united kingdom", "london", "canada", "germany",
+    "berlin", "poland", "singapore", "australia", "sydney", "melbourne",
+    "france", "paris", "netherlands", "amsterdam", "ireland", "dublin",
+    "japan", "tokyo", "brazil", "mexico", "israel", "tel aviv", "spain",
+    "madrid", "barcelona", "switzerland", "zurich", "austria", "vienna",
+    "sweden", "stockholm"
+  ]
 }
 

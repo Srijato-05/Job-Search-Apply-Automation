@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 import hmac
 import os
 from typing import Optional
@@ -44,11 +45,25 @@ def create_app(
     with Session(engine) as session:
         seed_watchlist(session)
 
-    scheduler = CollectorScheduler(settings=cfg, embedder=embedder_service)
+    scheduler = CollectorScheduler(
+        settings=cfg,
+        embedder=embedder_service,
+        interval_hours=cfg.collector_interval_hours,
+    )
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        if cfg.enable_background_scheduler:
+            scheduler.start(embedder=embedder_service)
+        try:
+            yield
+        finally:
+            scheduler.stop()
 
     app = FastAPI(
         title="JobAutomation Local Backend",
         version="0.1.0",
+        lifespan=lifespan,
     )
     app.state.settings = cfg
     app.state.local_token = local_token

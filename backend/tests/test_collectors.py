@@ -541,3 +541,142 @@ def test_manager_end_to_end_and_health(test_db_session: Session):
         assert health.healthy_sources >= 1
 
     asyncio.run(_run())
+
+
+# ==========================================
+# 7. Cycle 3.5 Polish Tests (Workday India Fallback, 404 invalid_config, HTTP API)
+# ==========================================
+def test_workday_large_tenant_india_search_fallback():
+    """Verify Workday switches to searchText='India' when global total exceeds page cap."""
+    async def _run():
+        search_texts_sent: list[str] = []
+
+        async def mock_post(url, json=None, headers=None, timeout=None):
+            st = (json or {}).get("searchText", "")
+            search_texts_sent.append(st)
+            if st == "":
+                # Simulate giant global tenant with 3,500 jobs
+                return httpx.Response(
+                    status_code=200,
+                    json={"total": 3500, "jobPostings": []},
+                    request=httpx.Request("POST", url),
+                )
+            # Targeted India query returns 1 India job
+            return httpx.Response(
+                status_code=200,
+                json={
+                    "total": 1,
+                    "jobPostings": [
+                        {
+                            "title": "Staff Engineer",
+                            "externalPath": "/job/Bengaluru-India/Staff-Engineer_JR9999",
+                            "locationsText": "Bengaluru, Karnataka, India",
+                            "bulletFields": ["JR9999"],
+                        }
+                    ],
+                },
+                request=httpx.Request("POST", url),
+            )
+
+        client = AsyncMock(spec=httpx.AsyncClient)
+        client.post.side_effect = mock_post
+        client.get.return_value = httpx.Response(
+            status_code=200,
+            json={"jobPostingInfo": {"jobDescription": "India Staff Engineer role."}},
+            request=httpx.Request("GET", "https://workday.com/job"),
+        )
+
+        jobs = await fetch_workday_jobs(
+            client=client,
+            tenant="cisco",
+            site="Cisco_Jobs",
+            company_name="Cisco",
+            filter_india_only=True,
+        )
+        assert search_texts_sent == ["", "India"]
+        assert len(jobs) == 1
+        assert jobs[0].external_job_id == "JR9999"
+
+    asyncio.run(_run())
+
+
+def test_404_marks_company_invalid_config(test_db_session: Session):
+    """Assert HTTP 404 flags company health_status as 'invalid_config'."""
+    async def _run():
+        manager = CollectorManager(settings=Settings())
+        comp = Company(
+            slug="broken-board-co",
+            display_name="Broken Board Co",
+            ats_type="greenhouse",
+            ats_config_json={"board_token": "does_not_exist"},
+            is_watched=True,
+        )
+        test_db_session.add(comp)
+        test_db_session.commit()
+        test_db_session.refresh(comp)
+
+        client = AsyncMock(spec=httpx.AsyncClient)
+        client.get.return_value = httpx.Response(
+            status_code=404,
+            request=httpx.Request("GET", "https://boards-api.greenhouse.io/v1/boards/does_not_exist/jobs"),
+        )
+
+        res = await manager.collect_company(test_db_session, MockEmbedder(), comp, client=client)
+        assert res.status == "invalid_config"
+        test_db_session.refresh(comp)
+        assert comp.health_status == "invalid_config"
+
+        health = manager.get_health_overview(test_db_session)
+        item = next((s for s in health.sources if s.source_key == "ats:broken-board-co"), None)
+        assert item is not None
+        assert item.status == "invalid_config"
+        assert health.error_sources >= 1
+
+    asyncio.run(_run())
+
+
+def test_watchlist_and_collectors_http_endpoints(client, auth_headers):
+    """Verify /api/v1/watchlist and /api/v1/collectors HTTP routes with X-Local-Token."""
+    # Seeded on boot -> list greenhouse companies
+    r_list = client.get("/api/v1/watchlist?ats_type=greenhouse", headers=auth_headers)
+    assert r_list.status_code == 200
+    assert len(r_list.json()) >= 20
+
+    # Create a custom watched company
+    r_create = client.post(
+        "/api/v1/watchlist",
+        headers=auth_headers,
+        json={
+            "slug": "custom-ai-startup",
+            "display_name": "Custom AI Startup",
+            "employer_type": "direct_product",
+            "ats_type": "ashby",
+            "ats_config_json": {"company_name": "custom-ai"},
+            "is_watched": True,
+        },
+    )
+    assert r_create.status_code == 201
+    assert r_create.json()["slug"] == "custom-ai-startup"
+
+    # Patch company
+    r_patch = client.patch(
+        "/api/v1/watchlist/custom-ai-startup",
+        headers=auth_headers,
+        json={"display_name": "Custom AI Labs"},
+    )
+    assert r_patch.status_code == 200
+    assert r_patch.json()["display_name"] == "Custom AI Labs"
+
+    # Collector health & runs endpoints
+    r_health = client.get("/api/v1/collectors/health", headers=auth_headers)
+    assert r_health.status_code == 200
+    assert r_health.json()["total_sources"] >= 60
+
+    r_runs = client.get("/api/v1/collectors/runs?limit=10", headers=auth_headers)
+    assert r_runs.status_code == 200
+    assert isinstance(r_runs.json(), list)
+
+    # Unwatch (soft delete)
+    r_del = client.delete("/api/v1/watchlist/custom-ai-startup", headers=auth_headers)
+    assert r_del.status_code == 200
+    assert r_del.json()["status"] == "unwatched"

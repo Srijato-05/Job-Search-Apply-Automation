@@ -54,6 +54,8 @@ async def fetch_workday_jobs(
     offset = 0
     total = 0
     page_count = 0
+    active_search_text = search_text
+    did_india_fallback = False
     all_postings: list[dict[str, Any]] = []
 
     while page_count < max_pages:
@@ -61,7 +63,7 @@ async def fetch_workday_jobs(
             "appliedFacets": {},
             "limit": _MAX_WORKDAY_PAGE_LIMIT,  # Hardcoded <= 20
             "offset": offset,
-            "searchText": search_text,
+            "searchText": active_search_text,
         }
 
         response = await client.post(jobs_url, json=payload, headers=headers, timeout=_DEFAULT_TIMEOUT)
@@ -74,6 +76,27 @@ async def fetch_workday_jobs(
         data = response.json()
 
         total = data.get("total", 0)
+
+        # For massive global tenants (> 1,000 jobs), automatically narrow to India
+        # so India roles beyond page 50 are never truncated.
+        if (
+            filter_india_only
+            and not did_india_fallback
+            and not active_search_text
+            and page_count == 0
+            and total > (max_pages * _MAX_WORKDAY_PAGE_LIMIT)
+        ):
+            logger.info(
+                f"Workday ({tenant}/{site}): global total={total} exceeds cap; "
+                "switching to searchText='India' for targeted India extraction."
+            )
+            active_search_text = "India"
+            did_india_fallback = True
+            offset = 0
+            page_count = 0
+            all_postings = []
+            continue
+
         postings = data.get("jobPostings", [])
         if not postings:
             break

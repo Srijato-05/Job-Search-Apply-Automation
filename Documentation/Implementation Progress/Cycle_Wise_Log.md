@@ -116,4 +116,17 @@ Chronological record of everything built, tested, and fixed through **Cycle 3**.
   - [Implementation Progress/File_Wise_Inventory.md](file:///f:/Projects/JobAutomation/Documentation/Implementation%20Progress/File_Wise_Inventory.md) (added Cycle 3 collector/schema/API/test entries)
 - **Removed:** None (`0` files deleted).
 
+---
+
+## Cycle 3.5: Collector Polish, Concurrency & Hardening
+
+### Built
+1. **FastAPI `lifespan` Scheduler Hook ([main.py](file:///f:/Projects/JobAutomation/backend/app/main.py)):** Wired `CollectorScheduler.start()` / `.stop()` into FastAPI's async `lifespan` controlled by `ENABLE_BACKGROUND_SCHEDULER` and `COLLECTOR_INTERVAL_HOURS` (disabled in [conftest.py](file:///f:/Projects/JobAutomation/backend/tests/conftest.py) for isolated tests).
+2. **Workday Large-Tenant India Fallback ([ats_workday.py](file:///f:/Projects/JobAutomation/backend/app/collectors/ats_workday.py)):** Automatically switches to `searchText="India"` when `filter_india_only=True`, `search_text=""`, and global `total > 1000`.
+3. **Bounded Parallel ATS Polling ([manager.py](file:///f:/Projects/JobAutomation/backend/app/collectors/manager.py)):** Uses `asyncio.Semaphore(COLLECTOR_MAX_CONCURRENCY)` (default `5`) for concurrent HTTP fetching across companies while keeping SQLite ingestion and pruning sequential.
+4. **HTTP `404` → `invalid_config` Health Status ([manager.py](file:///f:/Projects/JobAutomation/backend/app/collectors/manager.py)):** Flags 404 ATS board tokens as `health_status="invalid_config"` in `GET /api/v1/collectors/health`.
+5. **JobSpy Naukri Default & Pin ([jobspy_collector.py](file:///f:/Projects/JobAutomation/backend/app/collectors/jobspy_collector.py), [requirements.txt](file:///f:/Projects/JobAutomation/backend/requirements.txt)):** Wired default sites to `Settings.jobspy_sites_list` (including `"naukri"`) and pinned `python-jobspy>=1.1.75`.
+6. **Externalized Cycle 3 Constants ([config.py](file:///f:/Projects/JobAutomation/backend/app/config.py), [.env.example](file:///f:/Projects/JobAutomation/.env.example), [india_locations.json](file:///f:/Projects/JobAutomation/backend/app/data/india_locations.json), [location_filter.py](file:///f:/Projects/JobAutomation/backend/app/collectors/location_filter.py)):** Moved `excluded_foreign_locations` to JSON and added 5 collector settings to `.env`.
+7. **3 New Tests ([test_collectors.py](file:///f:/Projects/JobAutomation/backend/tests/test_collectors.py)):** Added `test_workday_large_tenant_india_search_fallback`, `test_404_marks_company_invalid_config`, and `test_watchlist_and_collectors_http_endpoints` (bringing the total suite to **29 tests**).
+
 

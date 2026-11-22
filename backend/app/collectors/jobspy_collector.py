@@ -69,8 +69,8 @@ class JobSpyCollector(BaseCollector):
 
         run_record = self.record_run_start(session)
 
-        # Target sites (defaulting to safe subset)
-        target_sites = sites or ["linkedin", "indeed", "glassdoor", "google"]
+        # Target sites (defaults from Settings, including Naukri)
+        target_sites = sites or self.settings.jobspy_sites_list
 
         # Derive search queries and locations from active resumes if not explicitly provided
         terms: list[str] = search_terms or []

@@ -103,6 +103,7 @@ def temp_settings(tmp_path: Path) -> Settings:
     return Settings(
         data_dir=tmp_path / "data",
         fastembed_cache_dir=_REPO_ROOT / ".fastembed_cache",
+        enable_background_scheduler=False,
     )
 
 
