@@ -6,9 +6,10 @@ import asyncio
 import logging
 from typing import Optional
 
+from sqlalchemy import Engine
 from sqlmodel import Session
 
-from app.collectors.manager import CollectorManager
+from app.collectors.manager import CollectionProgress, CollectorManager
 from app.config import Settings
 from app.db.database import create_db_engine
 from app.resumes.embedder import EmbedderProtocol
@@ -24,10 +25,16 @@ class CollectorScheduler:
         settings: Optional[Settings] = None,
         embedder: Optional[EmbedderProtocol] = None,
         interval_hours: int = 4,
+        engine: Optional[Engine] = None,
+        progress: Optional[CollectionProgress] = None,
+        lock: Optional[asyncio.Lock] = None,
     ):
         self.settings = settings or Settings()
         self.embedder = embedder
         self.interval_seconds = interval_hours * 3600
+        self.engine = engine
+        self.progress = progress
+        self.lock = lock
         self._task: Optional[asyncio.Task[None]] = None
         self._running = False
         self.manager = CollectorManager(settings=self.settings)
@@ -56,19 +63,32 @@ class CollectorScheduler:
             logger.info("CollectorScheduler cancelled.")
 
     async def _periodic_loop(self) -> None:
-        """Continuous execution loop with interval sleep and error isolation."""
-        engine = create_db_engine(self.settings.db_path)
+        """Continuous execution loop with interval sleep, overlap guard, and error isolation."""
+        engine = self.engine or create_db_engine(self.settings.db_path)
 
         while self._running:
             try:
-                logger.info("CollectorScheduler: commencing scheduled collection run...")
-                if self.embedder is not None:
-                    with Session(engine) as session:
-                        await self.manager.collect_all_watched(
-                            session=session,
-                            embedder=self.embedder,
-                            force=False,
-                        )
+                if self.lock is not None and self.lock.locked():
+                    logger.info("CollectorScheduler: skipping tick because a manual sweep is already running.")
+                elif self.embedder is not None:
+                    logger.info("CollectorScheduler: commencing scheduled collection run...")
+                    if self.lock is not None:
+                        async with self.lock:
+                            with Session(engine) as session:
+                                await self.manager.collect_all_watched(
+                                    session=session,
+                                    embedder=self.embedder,
+                                    force=False,
+                                    progress=self.progress,
+                                )
+                    else:
+                        with Session(engine) as session:
+                            await self.manager.collect_all_watched(
+                                session=session,
+                                embedder=self.embedder,
+                                force=False,
+                                progress=self.progress,
+                            )
                 else:
                     logger.warning("CollectorScheduler: embedder service not ready, skipping cycle.")
             except asyncio.CancelledError:

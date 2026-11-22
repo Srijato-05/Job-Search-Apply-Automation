@@ -40,6 +40,7 @@ class JobSpyCollector(BaseCollector):
         locations: Optional[list[str]] = None,
         results_per_site: int = 15,
         hours_old: int = 24,
+        progress: Optional[Any] = None,
     ) -> CollectorResult:
         """Run JobSpy search queries politely with random jitter and deduplication."""
         if not JOBSPY_AVAILABLE or scrape_jobs is None:
@@ -92,10 +93,20 @@ class JobSpyCollector(BaseCollector):
         total_fetched = 0
         total_new = 0
         caught_error: Optional[str] = None
+        bounded_terms = terms[:3]
+        bounded_locs = locs[:2]
+        if progress is not None:
+            progress.begin(
+                target="jobspy",
+                total=len(bounded_terms) * len(bounded_locs),
+                phase="jobspy",
+            )
 
         try:
-            for term in terms[:3]:  # Bounded query terms per run
-                for loc in locs[:2]:  # Bounded locations per run
+            for term in bounded_terms:
+                for loc in bounded_locs:
+                    batch_fetched = 0
+                    batch_new = 0
                     # Polite jitter before initiating scraper
                     jitter = random.uniform(
                         self.settings.jobspy_min_delay_sec,
@@ -130,9 +141,13 @@ class JobSpyCollector(BaseCollector):
                                 error_message=f"Rate limit triggered: {scrape_err}",
                             )
                         logger.error(f"JobSpy query failed for '{term}' at '{loc}': {scrape_err}")
+                        if progress is not None:
+                            progress.advance(f"{term} • {loc}")
                         continue
 
                     if df is None or getattr(df, "empty", True):
+                        if progress is not None:
+                            progress.advance(f"{term} • {loc}")
                         continue
 
                     # Process scraped rows
@@ -142,6 +157,7 @@ class JobSpyCollector(BaseCollector):
                             continue
 
                         total_fetched += 1
+                        batch_fetched += 1
 
                         # Dedup check against existing sources
                         existing_src = session.exec(
@@ -172,10 +188,17 @@ class JobSpyCollector(BaseCollector):
                         )
                         if res.action in ("new_role", "sibling_role", "created_new", "created_sibling"):
                             total_new += 1
+                            batch_new += 1
+
+                    if progress is not None:
+                        progress.advance(f"{term} • {loc}", fetched=batch_fetched, new=batch_new)
 
         except Exception as e:
             caught_error = str(e)
             logger.exception(f"JobSpy batch collection failed: {e}")
+        finally:
+            if progress is not None:
+                progress.finish()
 
         status = "error" if caught_error and total_fetched == 0 else "ok"
         result = CollectorResult(

@@ -310,6 +310,49 @@ class CollectorManager:
         collector.record_run_finish(session, run_record, final_res)
         return final_res
 
+    async def _fetch_company_raw_with_retry(
+        self,
+        company: Company,
+        client: httpx.AsyncClient,
+        known_external_ids: Optional[set[str]] = None,
+        force_refresh_details: bool = False,
+        retry_delays: tuple[float, ...] = (1.0, 3.0),
+    ) -> list[RawJobInput]:
+        """Fetch raw ATS jobs with short retries strictly on transient 5xx/timeouts.
+
+        Never retries 404 (invalid_config) or 429/403 (circuit breaker).
+        """
+        attempt = 0
+        while True:
+            try:
+                return await self._fetch_company_raw(
+                    company,
+                    client,
+                    known_external_ids=known_external_ids,
+                    force_refresh_details=force_refresh_details,
+                )
+            except httpx.HTTPStatusError as http_err:
+                code = http_err.response.status_code
+                if code >= 500 and attempt < len(retry_delays):
+                    delay = retry_delays[attempt]
+                    logger.warning(
+                        f"Transient HTTP {code} for {company.slug}; retrying in {delay}s (attempt {attempt + 1}/{len(retry_delays)})."
+                    )
+                    await asyncio.sleep(delay)
+                    attempt += 1
+                    continue
+                raise
+            except (httpx.TimeoutException, httpx.ConnectError) as net_err:
+                if attempt < len(retry_delays):
+                    delay = retry_delays[attempt]
+                    logger.warning(
+                        f"Transient network error for {company.slug} ({net_err}); retrying in {delay}s (attempt {attempt + 1}/{len(retry_delays)})."
+                    )
+                    await asyncio.sleep(delay)
+                    attempt += 1
+                    continue
+                raise
+
     async def _fetch_company_raw(
         self,
         company: Company,
@@ -431,7 +474,7 @@ class CollectorManager:
                 try:
                     return (
                         comp,
-                        await self._fetch_company_raw(
+                        await self._fetch_company_raw_with_retry(
                             comp,
                             client,
                             known_external_ids=known_ids,

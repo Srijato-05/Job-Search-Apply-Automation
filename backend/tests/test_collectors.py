@@ -852,3 +852,57 @@ def test_sqlite_composite_indexes_and_online_snapshot(tmp_path):
 
     snap = create_sqlite_snapshot(db_file, backups_dir, keep_last=2)
     assert snap is not None and snap.exists() and snap.stat().st_size > 0
+
+
+def test_transient_503_retries_and_succeeds():
+    """Verify transient 5xx responses are retried briefly and succeed on recovery."""
+    async def _run():
+        manager = CollectorManager(settings=Settings())
+        comp = Company(
+            slug="flaky-co",
+            display_name="Flaky Co",
+            ats_type="greenhouse",
+            ats_config_json={"board_token": "flaky"},
+            is_watched=True,
+        )
+        req = httpx.Request("GET", "https://boards-api.greenhouse.io/v1/boards/flaky/jobs")
+        ok_data = {
+            "jobs": [
+                {
+                    "id": 701,
+                    "title": "Platform Engineer",
+                    "location": {"name": "Bengaluru, India"},
+                    "content": "<p>Python and Kubernetes</p>",
+                    "absolute_url": "https://boards.greenhouse.io/flaky/jobs/701",
+                }
+            ]
+        }
+        client = AsyncMock(spec=httpx.AsyncClient)
+        client.get.side_effect = [
+            httpx.Response(status_code=503, request=req),
+            httpx.Response(status_code=503, request=req),
+            httpx.Response(status_code=200, json=ok_data, request=req),
+        ]
+
+        jobs = await manager._fetch_company_raw_with_retry(
+            comp, client, retry_delays=(0.0, 0.0)
+        )
+        assert len(jobs) == 1
+        assert jobs[0].external_job_id == "701"
+        assert client.get.call_count == 3
+
+    asyncio.run(_run())
+
+
+def test_overlapping_run_returns_409(client, auth_headers):
+    """Verify triggering /collectors/run while a sweep is active returns HTTP 409."""
+    client.app.state.collection_progress.running = True
+    try:
+        resp = client.post(
+            "/api/v1/collectors/run",
+            headers=auth_headers,
+            json={"source": "ats"},
+        )
+        assert resp.status_code == 409
+    finally:
+        client.app.state.collection_progress.running = False

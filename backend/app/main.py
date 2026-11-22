@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 import hmac
 import logging
@@ -78,12 +79,16 @@ def create_app(
             session.exec(select(Company).where(Company.is_watched.is_(True))).all()
         )
 
+    collection_progress = CollectionProgress()
+    collection_lock = asyncio.Lock()
     scheduler = CollectorScheduler(
         settings=cfg,
         embedder=embedder_service,
         interval_hours=cfg.collector_interval_hours,
+        engine=engine,
+        progress=collection_progress,
+        lock=collection_lock,
     )
-    collection_progress = CollectionProgress()
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -116,6 +121,7 @@ def create_app(
     app.state.embedder = embedder_service
     app.state.scheduler = scheduler
     app.state.collection_progress = collection_progress
+    app.state.collection_lock = collection_lock
 
     @app.middleware("http")
     async def verify_local_token(request: Request, call_next):

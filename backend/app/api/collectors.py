@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+from contextlib import nullcontext
 import logging
 from typing import Optional
 
@@ -40,25 +42,42 @@ async def trigger_collector_run(
     manager = CollectorManager(settings=settings)
     target = payload.source.strip().lower()
     progress: Optional[CollectionProgress] = getattr(request.app.state, "collection_progress", None)
+    lock: Optional[asyncio.Lock] = getattr(request.app.state, "collection_lock", None)
+
+    if (progress is not None and progress.running) or (lock is not None and lock.locked()):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A collection sweep is already in progress.",
+        )
 
     if background:
+        if progress is not None:
+            progress.begin(target=target, total=0, phase="queued")
+
         # Reuse request.app.state.engine (never create a duplicate SQLAlchemy engine)
         async def _run_bg():
-            with Session(engine) as bg_session:
-                if target in ("all", "ats"):
-                    await manager.collect_all_watched(
-                        bg_session,
-                        embedder,
-                        force=payload.force,
-                        force_refresh_details=payload.force_refresh_details,
-                        progress=progress,
-                    )
-                if target in ("all", "jobspy"):
-                    await manager.jobspy.run(
-                        bg_session,
-                        embedder,
-                        hours_old=payload.hours_old,
-                    )
+            lock_ctx = lock if lock is not None else nullcontext()
+            try:
+                async with lock_ctx:
+                    with Session(engine) as bg_session:
+                        if target in ("all", "ats"):
+                            await manager.collect_all_watched(
+                                bg_session,
+                                embedder,
+                                force=payload.force,
+                                force_refresh_details=payload.force_refresh_details,
+                                progress=progress,
+                            )
+                        if target in ("all", "jobspy"):
+                            await manager.jobspy.run(
+                                bg_session,
+                                embedder,
+                                hours_old=payload.hours_old,
+                                progress=progress,
+                            )
+            finally:
+                if progress is not None and progress.running:
+                    progress.finish()
 
         background_tasks.add_task(_run_bg)
         return [
@@ -71,68 +90,71 @@ async def trigger_collector_run(
 
     # Synchronous execution
     results: list[CollectorRunResponse] = []
+    lock_ctx = lock if lock is not None else nullcontext()
 
-    if target in ("all", "ats"):
-        ats_results = await manager.collect_all_watched(
-            session,
-            embedder,
-            force=payload.force,
-            force_refresh_details=payload.force_refresh_details,
-            progress=progress,
-        )
-        for r in ats_results:
+    async with lock_ctx:
+        if target in ("all", "ats"):
+            ats_results = await manager.collect_all_watched(
+                session,
+                embedder,
+                force=payload.force,
+                force_refresh_details=payload.force_refresh_details,
+                progress=progress,
+            )
+            for r in ats_results:
+                results.append(
+                    CollectorRunResponse(
+                        source_name="ats_batch",
+                        status=r.status,
+                        fetched_count=r.fetched_count,
+                        new_count=r.new_count,
+                        closed_count=r.closed_count,
+                        cooldown_until=r.cooldown_until,
+                        error_message=r.error_message,
+                        started_at=utc_now(),
+                    )
+                )
+
+        if target in ("all", "jobspy"):
+            jobspy_res = await manager.jobspy.run(
+                session,
+                embedder,
+                hours_old=payload.hours_old,
+                progress=progress,
+            )
             results.append(
                 CollectorRunResponse(
-                    source_name="ats_batch",
-                    status=r.status,
-                    fetched_count=r.fetched_count,
-                    new_count=r.new_count,
-                    closed_count=r.closed_count,
-                    cooldown_until=r.cooldown_until,
-                    error_message=r.error_message,
+                    source_name="jobspy",
+                    status=jobspy_res.status,
+                    fetched_count=jobspy_res.fetched_count,
+                    new_count=jobspy_res.new_count,
+                    closed_count=jobspy_res.closed_count,
+                    cooldown_until=jobspy_res.cooldown_until,
+                    error_message=jobspy_res.error_message,
                     started_at=utc_now(),
                 )
             )
 
-    if target in ("all", "jobspy"):
-        jobspy_res = await manager.jobspy.run(
-            session,
-            embedder,
-            hours_old=payload.hours_old,
-        )
-        results.append(
-            CollectorRunResponse(
-                source_name="jobspy",
-                status=jobspy_res.status,
-                fetched_count=jobspy_res.fetched_count,
-                new_count=jobspy_res.new_count,
-                closed_count=jobspy_res.closed_count,
-                cooldown_until=jobspy_res.cooldown_until,
-                error_message=jobspy_res.error_message,
-                started_at=utc_now(),
-            )
-        )
+        # Specific company slug target
+        if target not in ("all", "ats", "jobspy"):
+            company = session.exec(select(Company).where(Company.slug == target)).first()
+            if not company:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Company with slug '{target}' not found")
 
-    # Specific company slug target
-    if target not in ("all", "ats", "jobspy"):
-        company = session.exec(select(Company).where(Company.slug == target)).first()
-        if not company:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Company with slug '{target}' not found")
-
-        comp_res = await manager.collect_company(session, embedder, company, force=payload.force)
-        results.append(
-            CollectorRunResponse(
-                source_name=f"ats:{company.slug}",
-                company_slug=company.slug,
-                status=comp_res.status,
-                fetched_count=comp_res.fetched_count,
-                new_count=comp_res.new_count,
-                closed_count=comp_res.closed_count,
-                cooldown_until=comp_res.cooldown_until,
-                error_message=comp_res.error_message,
-                started_at=utc_now(),
+            comp_res = await manager.collect_company(session, embedder, company, force=payload.force)
+            results.append(
+                CollectorRunResponse(
+                    source_name=f"ats:{company.slug}",
+                    company_slug=company.slug,
+                    status=comp_res.status,
+                    fetched_count=comp_res.fetched_count,
+                    new_count=comp_res.new_count,
+                    closed_count=comp_res.closed_count,
+                    cooldown_until=comp_res.cooldown_until,
+                    error_message=comp_res.error_message,
+                    started_at=utc_now(),
+                )
             )
-        )
 
     return results
 
