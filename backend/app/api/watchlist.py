@@ -7,14 +7,16 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select
 
-from app.api.deps import get_session
-from app.collectors.manager import seed_watchlist
+from app.api.deps import get_session, get_settings
+from app.collectors.manager import CollectorManager, seed_watchlist
+from app.config import Settings
 from app.db.models import Company
 from app.schemas.watchlist import (
     CompanyCreate,
     CompanyResponse,
     CompanyUpdate,
     WatchlistSeedResponse,
+    WatchlistVerifyResponse,
 )
 
 router = APIRouter(prefix="/watchlist", tags=["Watchlist"])
@@ -139,4 +141,14 @@ def trigger_watchlist_seed(
         total_count=total,
         message=f"Successfully synced watchlist: {seeded} new companies added, {updated} updated (total: {total}).",
     )
+
+
+@router.post("/verify", response_model=WatchlistVerifyResponse)
+async def verify_watchlist_endpoints(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> WatchlistVerifyResponse:
+    """Concurrently probe all watched ATS board tokens and flag any 404s as invalid_config."""
+    manager = CollectorManager(settings=settings)
+    return await manager.verify_watchlist_boards(session)
 

@@ -159,3 +159,23 @@ Pre-populated with 68 premier Indian tech companies across:
 
 Synchronization via `POST /api/v1/watchlist/seed` inserts new entries and updates configurations while preserving custom user status (`is_watched`, `is_blacklisted`).
 
+---
+
+## 7. Incremental Detail Fetching, Portal Expirations & Checkpoints (Cycle 3.5)
+
+### 7.1. Incremental Detail Fetching (Workday & SmartRecruiters)
+- **Initial Run:** `known_external_ids` is empty, so **100%** of India job detail pages are downloaded.
+- **Repeat Runs:** The list endpoint is *always* fetched in full (so the Closed-Job Pruner still has the complete active ID set), while per-job detail HTTP calls are skipped for `external_job_id`s already present in `job_sources` (unless `force_refresh_details=true`).
+
+### 7.2. Direct ATS vs. Job Portals (LinkedIn, Naukri, Indeed)
+- **Initial vs. Daily Window:** JobSpy supports `hours_old` up to `720` (30 days) for initial seeding via `POST /api/v1/collectors/run` and defaults to `hours_old=24` for daily polite sweeps.
+- **Expirations:** The ATS Closed-Job Pruner **never** runs on JobSpy/portal jobs (since a listing absent from a 24-hour search may simply be 3 days old). Portal expirations are detected by the Chromium Extension `"Expired"` Watcher (Cycle 6).
+- **Progress Tracking:** Exposed via `GET /api/v1/collectors/progress` — ATS sweeps report `completed / total` companies; JobSpy sweeps report bounded query batches (`titles × cities`).
+
+### 7.3. Checkpoints, Failsafes & Scale Safeguards
+- **Stale Run Recovery:** On server boot, `recover_stale_runs()` marks any `collector_runs` row stuck in `"running"` (from crash/restart) as `"interrupted"`.
+- **Resumable Sweep Checkpoint:** `collect_all_watched()` skips companies already successfully polled within the last `30` minutes (when `force=False`) so an interrupted sweep resumes where it left off.
+- **Watchlist Verifier:** `POST /api/v1/watchlist/verify` concurrently probes all watched ATS boards (`asyncio.Semaphore`) and flags `404` boards as `health_status="invalid_config"`.
+- **Composite SQLite Indexes:** `idx_jobs_company_status`, `idx_jobs_identity_lookup`, `idx_collector_runs_lookup`, and `idx_job_sources_job_portal` keep queries fast at 10,000+ jobs.
+- **Rotating Local Logs & Online Snapshots:** `data/app.log` is hard-capped at `20 MB` (`5 MB × 3` backups), and `create_sqlite_snapshot()` uses SQLite's WAL-safe `conn.backup()` API keeping the last 5 rolling snapshots in `data/backups/`.
+

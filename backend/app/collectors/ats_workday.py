@@ -34,6 +34,8 @@ async def fetch_workday_jobs(
     filter_india_only: bool = True,
     search_text: str = "",
     max_pages: int = _MAX_PAGE_SAFETY_LIMIT,
+    known_external_ids: Optional[set[str]] = None,
+    force_refresh_details: bool = False,
 ) -> list[RawJobInput]:
     """Fetch open postings from modern Workday CXS POST endpoint.
 
@@ -136,9 +138,18 @@ async def fetch_workday_jobs(
         job_url = f"https://{tenant}{('.' + instance) if instance else ''}.myworkdayjobs.com/en-US/{site}{external_path}"
         external_job_id = req_id or external_path.strip("/").split("/")[-1]
 
-        # Fetch detail JSON if external_path exists
+        # Incremental detail fetch: skip per-job detail HTTP call if already known in DB
+        # (initial runs have empty known_external_ids so 100% of details are downloaded;
+        # the full list above is still always fetched so the closed-job pruner stays 100% accurate).
+        skip_detail = (
+            not force_refresh_details
+            and known_external_ids is not None
+            and external_job_id in known_external_ids
+        )
+
+        # Fetch detail JSON if external_path exists and not skipped
         description = ""
-        if external_path:
+        if external_path and not skip_detail:
             detail_url = f"{base_url}/job{external_path}"
             try:
                 detail_resp = await client.get(detail_url, headers=headers, timeout=_DEFAULT_TIMEOUT)

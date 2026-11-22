@@ -102,7 +102,7 @@ Complete inventory of every implemented file across the repository as of **Cycle
 
 ---
 
-## 8. Automated Test Suite (`backend/tests/` — 29 Tests Across 6 Files)
+## 8. Automated Test Suite (`backend/tests/` — 33 Tests Across 6 Files)
 
 | File | Tests Count | Scope Covered |
 | :--- | :--- | :--- |
@@ -112,5 +112,5 @@ Complete inventory of every implemented file across the repository as of **Cycle
 | [test_resumes_and_embeddings.py](file:///f:/Projects/JobAutomation/backend/tests/test_resumes_and_embeddings.py) | 2 | Full Resume PDF upload/download/patch/reparse/cascade-delete + real `BAAI/bge-small-en-v1.5` semantic ranking |
 | [test_pipeline_and_jobs.py](file:///f:/Projects/JobAutomation/backend/tests/test_pipeline_and_jobs.py) | 4 | Boilerplate strip + 10-field extraction, Gate 1 audit/unhide, Gate 2 sibling roles + diff, Gate 4 Option 1+3 routing + alerts + Gate 5 filters |
 | [test_config_and_data.py](file:///f:/Projects/JobAutomation/backend/tests/test_config_and_data.py) | 3 | JSON file loading, `Settings` threshold override checks on Gate 1, Gate 4, and `orchestrator.ingest_job` |
-| [test_collectors.py](file:///f:/Projects/JobAutomation/backend/tests/test_collectors.py) | 13 | Location filtering, Watchlist seeding/CRUD, 5 ATS connectors + Workday India fallback, 429 circuit breaker, 404 `invalid_config`, closed-job pruner, end-to-end manager, and HTTP API routes |
+| [test_collectors.py](file:///f:/Projects/JobAutomation/backend/tests/test_collectors.py) | 17 | Location filtering, Watchlist seeding/CRUD/verify, 5 ATS connectors + Workday India fallback & incremental detail skip, 429 circuit breaker, 404 `invalid_config`, closed-job pruner, stale-run recovery, resumable checkpoints, composite indexes, online snapshot, and HTTP API routes |
 

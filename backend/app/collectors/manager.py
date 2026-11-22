@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 import json
 import logging
 from pathlib import Path
@@ -15,19 +17,107 @@ from app.collectors.ats_ashby import fetch_ashby_jobs
 from app.collectors.ats_greenhouse import fetch_greenhouse_jobs
 from app.collectors.ats_lever import fetch_lever_jobs
 from app.collectors.ats_smartrecruiters import fetch_smartrecruiters_jobs
-from app.collectors.ats_workday import fetch_workday_jobs
+from app.collectors.ats_workday import _build_workday_cxs_base_url, fetch_workday_jobs
 from app.collectors.base import BaseCollector, CollectorResult
 from app.collectors.jobspy_collector import JobSpyCollector
 from app.collectors.pruner import prune_closed_ats_jobs
 from app.config import Settings
-from app.db.models import CollectorRun, Company, utc_now
+from app.db.models import CollectorRun, Company, Job, JobSource, utc_now
 from app.pipeline.orchestrator import IngestionResult, RawJobInput, ingest_job
 from app.resumes.embedder import EmbedderProtocol
-from app.schemas.collectors import CollectorHealthResponse, SourceHealthItem
+from app.schemas.collectors import (
+    CollectorHealthResponse,
+    CollectorProgressResponse,
+    SourceHealthItem,
+)
+from app.schemas.watchlist import WatchlistVerifyItem, WatchlistVerifyResponse
 
 logger = logging.getLogger(__name__)
 
 _WATCHLIST_SEED_FILE = Path(__file__).resolve().parents[1] / "data" / "watchlist_seed.json"
+
+
+@dataclass
+class CollectionProgress:
+    """In-memory live progress state for background or on-demand collection sweeps."""
+
+    running: bool = False
+    target: Optional[str] = None
+    phase: str = "idle"
+    completed: int = 0
+    total: int = 0
+    current_item: Optional[str] = None
+    fetched_so_far: int = 0
+    new_so_far: int = 0
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+
+    def begin(self, target: str, total: int, phase: str = "ats") -> None:
+        self.running = True
+        self.target = target
+        self.phase = phase
+        self.completed = 0
+        self.total = total
+        self.current_item = None
+        self.fetched_so_far = 0
+        self.new_so_far = 0
+        self.started_at = utc_now()
+        self.finished_at = None
+
+    def advance(self, item: str, fetched: int = 0, new: int = 0) -> None:
+        self.completed += 1
+        self.current_item = item
+        self.fetched_so_far += fetched
+        self.new_so_far += new
+
+    def finish(self) -> None:
+        self.running = False
+        self.phase = "idle"
+        self.current_item = None
+        self.finished_at = utc_now()
+
+    def snapshot(self) -> CollectorProgressResponse:
+        return CollectorProgressResponse(
+            running=self.running,
+            target=self.target,
+            phase=self.phase,
+            completed=self.completed,
+            total=self.total,
+            current_item=self.current_item,
+            fetched_so_far=self.fetched_so_far,
+            new_so_far=self.new_so_far,
+            started_at=self.started_at,
+            finished_at=self.finished_at,
+        )
+
+
+def recover_stale_runs(session: Session) -> int:
+    """Mark any collector_runs stuck in 'running' (e.g. from crash/restart) as 'interrupted'."""
+    stale = list(
+        session.exec(select(CollectorRun).where(CollectorRun.status == "running")).all()
+    )
+    now = utc_now()
+    for run in stale:
+        run.status = "interrupted"
+        run.finished_at = now
+        run.error_message = run.error_message or "Interrupted by server shutdown or restart"
+        session.add(run)
+    if stale:
+        session.commit()
+    return len(stale)
+
+
+def _get_known_external_ids(session: Session, company_slug: str) -> set[str]:
+    """Return known external_job_ids for a company so detail fetches can be incremental."""
+    rows = session.exec(
+        select(JobSource.external_job_id)
+        .join(Job, Job.id == JobSource.job_id)  # type: ignore[arg-type]
+        .where(
+            Job.company_slug == company_slug,
+            JobSource.external_job_id.is_not(None),  # type: ignore[attr-defined]
+        )
+    ).all()
+    return {str(r) for r in rows if r}
 
 
 def seed_watchlist(session: Session) -> tuple[int, int, int]:
@@ -224,6 +314,8 @@ class CollectorManager:
         self,
         company: Company,
         client: httpx.AsyncClient,
+        known_external_ids: Optional[set[str]] = None,
+        force_refresh_details: bool = False,
     ) -> list[RawJobInput]:
         """Dispatch HTTP fetch to the appropriate ATS connector."""
         ats_type = (company.ats_type or "").lower().strip()
@@ -235,7 +327,13 @@ class CollectorManager:
         if ats_type == "ashby":
             return await fetch_ashby_jobs(client, cfg.get("company_name") or company.slug, company.display_name)
         if ats_type == "smartrecruiters":
-            return await fetch_smartrecruiters_jobs(client, cfg.get("company_id") or company.slug, company.display_name)
+            return await fetch_smartrecruiters_jobs(
+                client,
+                cfg.get("company_id") or company.slug,
+                company.display_name,
+                known_external_ids=known_external_ids,
+                force_refresh_details=force_refresh_details,
+            )
         if ats_type == "workday":
             return await fetch_workday_jobs(
                 client,
@@ -243,6 +341,8 @@ class CollectorManager:
                 cfg.get("site") or "careers",
                 company.display_name,
                 instance=cfg.get("instance"),
+                known_external_ids=known_external_ids,
+                force_refresh_details=force_refresh_details,
             )
         raise ValueError(f"Unsupported ATS type '{ats_type}' for {company.display_name}")
 
@@ -251,8 +351,16 @@ class CollectorManager:
         session: Session,
         embedder: EmbedderProtocol,
         force: bool = False,
+        resume_window_minutes: int = 30,
+        force_refresh_details: bool = False,
+        progress: Optional[CollectionProgress] = None,
     ) -> list[CollectorResult]:
-        """Fetch watched ATS feeds concurrently (bounded by Semaphore), then ingest/prune safely."""
+        """Fetch watched ATS feeds concurrently (bounded by Semaphore), then ingest/prune safely.
+
+        Supports resumable sweep checkpoints: when `force=False`, companies already successfully
+        polled within the last `resume_window_minutes` are skipped so an interrupted sweep
+        picks up where it left off.
+        """
         watched = list(
             session.exec(
                 select(Company).where(
@@ -265,15 +373,21 @@ class CollectorManager:
         if not watched:
             return []
 
+        if progress is not None:
+            progress.begin(target="ats", total=len(watched), phase="ats")
+
         sem = asyncio.Semaphore(max(1, self.settings.collector_max_concurrency))
         timeout = max(5.0, float(self.settings.ats_http_timeout_sec))
+        now = utc_now()
+        resume_cutoff = now - timedelta(minutes=resume_window_minutes)
 
-        # Pre-check cooldowns sequentially on the DB session before dispatching HTTP
-        eligible: list[tuple[Company, BaseCollector, CollectorRun]] = []
+        # Pre-check cooldowns, resumable checkpoints, and known IDs sequentially on DB session
+        eligible: list[tuple[Company, BaseCollector, CollectorRun, set[str]]] = []
         results: list[CollectorResult] = []
         for comp in watched:
             ats_type = (comp.ats_type or "").lower().strip()
             collector = BaseCollector(source_name=f"ats_{ats_type}", settings=self.settings)
+
             if not force:
                 cooldown_until = collector.get_active_cooldown(session, company_slug=comp.slug)
                 if cooldown_until:
@@ -284,24 +398,57 @@ class CollectorManager:
                             cooldown_until=cooldown_until,
                         )
                     )
+                    if progress is not None:
+                        progress.advance(comp.display_name)
                     continue
-            run_record = collector.record_run_start(session, company_slug=comp.slug)
-            eligible.append((comp, collector, run_record))
 
-        async def _bounded_fetch(comp: Company, client: httpx.AsyncClient):
+                # Resumable sweep checkpoint: skip recently succeeded companies
+                if (
+                    resume_window_minutes > 0
+                    and comp.health_status == "ok"
+                    and comp.last_polled_at is not None
+                ):
+                    polled_at = comp.last_polled_at
+                    if polled_at.tzinfo is None:
+                        polled_at = polled_at.replace(tzinfo=now.tzinfo)
+                    if polled_at >= resume_cutoff:
+                        results.append(
+                            CollectorResult(
+                                status="skipped_recent",
+                                error_message=f"Already polled within last {resume_window_minutes}m (checkpoint).",
+                            )
+                        )
+                        if progress is not None:
+                            progress.advance(comp.display_name)
+                        continue
+
+            known_ids = _get_known_external_ids(session, comp.slug)
+            run_record = collector.record_run_start(session, company_slug=comp.slug)
+            eligible.append((comp, collector, run_record, known_ids))
+
+        async def _bounded_fetch(comp: Company, known_ids: set[str], client: httpx.AsyncClient):
             async with sem:
                 try:
-                    return comp, await self._fetch_company_raw(comp, client), None
+                    return (
+                        comp,
+                        await self._fetch_company_raw(
+                            comp,
+                            client,
+                            known_external_ids=known_ids,
+                            force_refresh_details=force_refresh_details,
+                        ),
+                        None,
+                    )
                 except Exception as exc:
                     return comp, None, exc
 
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
             fetched_outcomes = await asyncio.gather(
-                *(_bounded_fetch(comp, client) for comp, _, _ in eligible)
+                *(_bounded_fetch(comp, known_ids, client) for comp, _, _, known_ids in eligible)
             )
 
         # Ingest, prune, and record telemetry sequentially on the SQLite session
-        for (comp, collector, run_record), (_, raw_jobs, err) in zip(eligible, fetched_outcomes):
+        for (comp, collector, run_record, _), (_, raw_jobs, err) in zip(eligible, fetched_outcomes):
             if err is not None:
                 if isinstance(err, httpx.HTTPStatusError):
                     code = err.response.status_code
@@ -319,6 +466,8 @@ class CollectorManager:
                                 cooldown_until=tripped.cooldown_until,
                             )
                         )
+                        if progress is not None:
+                            progress.advance(comp.display_name)
                         continue
                     if code == 404:
                         res = CollectorResult(
@@ -327,10 +476,14 @@ class CollectorManager:
                         )
                         collector.record_run_finish(session, run_record, res)
                         results.append(res)
+                        if progress is not None:
+                            progress.advance(comp.display_name)
                         continue
                 res = CollectorResult(status="error", error_message=str(err))
                 collector.record_run_finish(session, run_record, res)
                 results.append(res)
+                if progress is not None:
+                    progress.advance(comp.display_name)
                 continue
 
             jobs_list = raw_jobs or []
@@ -374,8 +527,138 @@ class CollectorManager:
             )
             collector.record_run_finish(session, run_record, final_res)
             results.append(final_res)
+            if progress is not None:
+                progress.advance(comp.display_name, fetched=len(jobs_list), new=new_count)
+
+        if progress is not None:
+            progress.finish()
 
         return results
+
+    async def verify_watchlist_boards(
+        self,
+        session: Session,
+        client: Optional[httpx.AsyncClient] = None,
+    ) -> WatchlistVerifyResponse:
+        """Lightweight concurrent probe of all watched ATS board tokens without ingestion."""
+        watched = list(
+            session.exec(
+                select(Company).where(
+                    Company.is_watched.is_(True),
+                    Company.is_blacklisted.is_(False),
+                    Company.ats_type.is_not(None),  # type: ignore[attr-defined]
+                )
+            ).all()
+        )
+        sem = asyncio.Semaphore(max(1, self.settings.collector_max_concurrency))
+        timeout = min(10.0, float(self.settings.ats_http_timeout_sec))
+
+        async def _probe(comp: Company, http_client: httpx.AsyncClient) -> WatchlistVerifyItem:
+            ats_type = (comp.ats_type or "").lower().strip()
+            cfg = comp.ats_config_json or {}
+            async with sem:
+                try:
+                    if ats_type == "greenhouse":
+                        token = cfg.get("board_token") or comp.slug
+                        resp = await http_client.get(
+                            f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=false",
+                            timeout=timeout,
+                        )
+                    elif ats_type == "lever":
+                        token = cfg.get("company_name") or comp.slug
+                        resp = await http_client.get(
+                            f"https://api.lever.co/v0/postings/{token}?mode=json&limit=1",
+                            timeout=timeout,
+                        )
+                    elif ats_type == "ashby":
+                        token = cfg.get("company_name") or comp.slug
+                        resp = await http_client.get(
+                            f"https://api.ashbyhq.com/posting-api/job-board/{token}",
+                            timeout=timeout,
+                        )
+                    elif ats_type == "smartrecruiters":
+                        cid = cfg.get("company_id") or comp.slug
+                        resp = await http_client.get(
+                            f"https://api.smartrecruiters.com/v1/companies/{cid}/postings?limit=1",
+                            timeout=timeout,
+                        )
+                    elif ats_type == "workday":
+                        base = _build_workday_cxs_base_url(
+                            cfg.get("tenant") or comp.slug,
+                            cfg.get("site") or "careers",
+                            cfg.get("instance"),
+                        )
+                        resp = await http_client.post(
+                            f"{base}/jobs",
+                            json={"appliedFacets": {}, "limit": 1, "offset": 0, "searchText": ""},
+                            timeout=timeout,
+                        )
+                    else:
+                        return WatchlistVerifyItem(
+                            slug=comp.slug,
+                            display_name=comp.display_name,
+                            ats_type=ats_type,
+                            status="invalid_config",
+                            detail=f"Unsupported ATS type '{ats_type}'",
+                        )
+
+                    code = resp.status_code
+                    if code == 200:
+                        status_str = "ok"
+                        detail = None
+                    elif code == 404:
+                        status_str = "invalid_config"
+                        detail = "HTTP 404: Board token or endpoint not found"
+                    elif code in (429, 403):
+                        status_str = "cooldown"
+                        detail = f"HTTP {code}: Rate limited or blocked"
+                    else:
+                        status_str = "error"
+                        detail = f"HTTP {code}"
+                    return WatchlistVerifyItem(
+                        slug=comp.slug,
+                        display_name=comp.display_name,
+                        ats_type=ats_type,
+                        status=status_str,
+                        http_status=code,
+                        detail=detail,
+                    )
+                except Exception as exc:
+                    return WatchlistVerifyItem(
+                        slug=comp.slug,
+                        display_name=comp.display_name,
+                        ats_type=ats_type,
+                        status="error",
+                        detail=str(exc),
+                    )
+
+        close_client = False
+        if client is None:
+            client = httpx.AsyncClient(timeout=timeout, follow_redirects=True)
+            close_client = True
+        try:
+            items = list(await asyncio.gather(*(_probe(c, client) for c in watched)))
+        finally:
+            if close_client:
+                await client.aclose()
+
+        # Persist updated health_status back to SQLite
+        comp_by_slug = {c.slug: c for c in watched}
+        for item in items:
+            comp_row = comp_by_slug.get(item.slug)
+            if comp_row is not None:
+                comp_row.health_status = item.status
+                session.add(comp_row)
+        session.commit()
+
+        return WatchlistVerifyResponse(
+            total_checked=len(items),
+            valid_count=sum(1 for i in items if i.status == "ok"),
+            invalid_count=sum(1 for i in items if i.status == "invalid_config"),
+            cooldown_count=sum(1 for i in items if i.status == "cooldown"),
+            error_count=sum(1 for i in items if i.status == "error"),
+            results=items,
+        )
 
     def get_health_overview(self, session: Session) -> CollectorHealthResponse:
         """Compute system-wide health and cooldown status for all sources."""

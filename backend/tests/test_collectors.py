@@ -680,3 +680,175 @@ def test_watchlist_and_collectors_http_endpoints(client, auth_headers):
     r_del = client.delete("/api/v1/watchlist/custom-ai-startup", headers=auth_headers)
     assert r_del.status_code == 200
     assert r_del.json()["status"] == "unwatched"
+
+    # Progress endpoint
+    r_prog = client.get("/api/v1/collectors/progress", headers=auth_headers)
+    assert r_prog.status_code == 200
+    assert r_prog.json()["running"] is False
+    assert r_prog.json()["phase"] == "idle"
+
+
+def test_workday_incremental_detail_skip():
+    """Verify Workday skips per-job detail HTTP calls for already-known IDs while keeping full list."""
+    async def _run():
+        detail_calls: list[str] = []
+
+        async def mock_post(url, json=None, headers=None, timeout=None):
+            return httpx.Response(
+                status_code=200,
+                json={
+                    "total": 2,
+                    "jobPostings": [
+                        {
+                            "title": "Existing SDE",
+                            "externalPath": "/job/Bengaluru-India/Existing-SDE_JR1001",
+                            "locationsText": "Bengaluru, India",
+                            "bulletFields": ["JR1001"],
+                        },
+                        {
+                            "title": "Brand New SDE",
+                            "externalPath": "/job/Bengaluru-India/New-SDE_JR1002",
+                            "locationsText": "Bengaluru, India",
+                            "bulletFields": ["JR1002"],
+                        },
+                    ],
+                },
+                request=httpx.Request("POST", url),
+            )
+
+        async def mock_get(url, headers=None, timeout=None):
+            detail_calls.append(url)
+            return httpx.Response(
+                status_code=200,
+                json={"jobPostingInfo": {"jobDescription": "Full Workday JD"}},
+                request=httpx.Request("GET", url),
+            )
+
+        client = AsyncMock(spec=httpx.AsyncClient)
+        client.post.side_effect = mock_post
+        client.get.side_effect = mock_get
+
+        jobs = await fetch_workday_jobs(
+            client=client,
+            tenant="walmart",
+            site="WalmartExternal",
+            company_name="Walmart",
+            known_external_ids={"JR1001"},
+        )
+        # Both jobs returned so pruner knows JR1001 is still active,
+        # but only JR1002 triggered a detail HTTP GET!
+        assert len(jobs) == 2
+        assert len(detail_calls) == 1
+        assert "JR1002" in detail_calls[0]
+
+    asyncio.run(_run())
+
+
+def test_recover_stale_runs_and_resumable_checkpoint(test_db_session: Session):
+    """Verify stuck 'running' rows recover to 'interrupted' and recent companies are skipped."""
+    from app.collectors.manager import recover_stale_runs
+
+    stale_run = CollectorRun(
+        source_name="ats_greenhouse",
+        company_slug="razorpay",
+        status="running",
+        started_at=utc_now() - timedelta(hours=1),
+    )
+    test_db_session.add(stale_run)
+    test_db_session.commit()
+
+    recovered = recover_stale_runs(test_db_session)
+    assert recovered == 1
+    test_db_session.refresh(stale_run)
+    assert stale_run.status == "interrupted"
+    assert stale_run.finished_at is not None
+
+    # Resumable sweep checkpoint: company polled 5 minutes ago is skipped when force=False
+    recent_comp = Company(
+        slug="recent-co",
+        display_name="Recent Co",
+        ats_type="greenhouse",
+        ats_config_json={"board_token": "recent"},
+        is_watched=True,
+        health_status="ok",
+        last_polled_at=utc_now() - timedelta(minutes=5),
+    )
+    test_db_session.add(recent_comp)
+    test_db_session.commit()
+
+    async def _run():
+        manager = CollectorManager(settings=Settings())
+        res_list = await manager.collect_all_watched(
+            test_db_session,
+            MockEmbedder(),
+            force=False,
+            resume_window_minutes=30,
+        )
+        assert any(r.status == "skipped_recent" for r in res_list)
+
+    asyncio.run(_run())
+
+
+def test_watchlist_verify_boards_mocked(test_db_session: Session):
+    """Verify concurrent board probe marks 200 as 'ok' and 404 as 'invalid_config'."""
+    c_ok = Company(
+        slug="ok-co",
+        display_name="OK Co",
+        ats_type="greenhouse",
+        ats_config_json={"board_token": "ok"},
+        is_watched=True,
+    )
+    c_404 = Company(
+        slug="dead-co",
+        display_name="Dead Co",
+        ats_type="lever",
+        ats_config_json={"company_name": "dead"},
+        is_watched=True,
+    )
+    test_db_session.add(c_ok)
+    test_db_session.add(c_404)
+    test_db_session.commit()
+
+    async def mock_get(url, timeout=None):
+        if "greenhouse" in url:
+            return httpx.Response(status_code=200, json={"jobs": []}, request=httpx.Request("GET", url))
+        return httpx.Response(status_code=404, request=httpx.Request("GET", url))
+
+    client = AsyncMock(spec=httpx.AsyncClient)
+    client.get.side_effect = mock_get
+
+    async def _run():
+        manager = CollectorManager(settings=Settings())
+        summary = await manager.verify_watchlist_boards(test_db_session, client=client)
+        assert summary.total_checked == 2
+        assert summary.valid_count == 1
+        assert summary.invalid_count == 1
+
+    asyncio.run(_run())
+    test_db_session.refresh(c_ok)
+    test_db_session.refresh(c_404)
+    assert c_ok.health_status == "ok"
+    assert c_404.health_status == "invalid_config"
+
+
+def test_sqlite_composite_indexes_and_online_snapshot(tmp_path):
+    """Verify composite indexes are created by init_db and online backup creates a snapshot."""
+    from sqlalchemy import text
+    from app.db.database import create_db_engine, create_sqlite_snapshot, init_db
+
+    db_file = tmp_path / "test_scale.db"
+    backups_dir = tmp_path / "backups"
+    engine = create_db_engine(db_file)
+    init_db(engine)
+
+    with engine.connect() as conn:
+        rows = conn.execute(text("SELECT name FROM sqlite_master WHERE type='index'")).fetchall()
+        idx_names = {r[0] for r in rows}
+
+    assert "idx_jobs_company_status" in idx_names
+    assert "idx_jobs_identity_lookup" in idx_names
+    assert "idx_collector_runs_lookup" in idx_names
+    assert "idx_job_sources_job_portal" in idx_names
+
+    snap = create_sqlite_snapshot(db_file, backups_dir, keep_last=2)
+    assert snap is not None and snap.exists() and snap.stat().st_size > 0

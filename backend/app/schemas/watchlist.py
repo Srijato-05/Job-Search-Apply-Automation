@@ -43,3 +43,21 @@ class WatchlistSeedResponse(BaseModel):
     total_count: int
     message: str
 
+
+class WatchlistVerifyItem(BaseModel):
+    slug: str
+    display_name: str
+    ats_type: str
+    status: str  # "ok", "invalid_config", "cooldown", "error"
+    http_status: Optional[int] = None
+    detail: Optional[str] = None
+
+
+class WatchlistVerifyResponse(BaseModel):
+    total_checked: int
+    valid_count: int
+    invalid_count: int
+    cooldown_count: int
+    error_count: int
+    results: list[WatchlistVerifyItem]
+

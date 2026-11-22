@@ -69,7 +69,7 @@ flowchart LR
 | **Cycle 1** | FastAPI loopback security (`X-Local-Token`, CORS), SQLite WAL + 10 tables + FTS5, India Fact Vault, PII Guardrails, 500+ skill/city taxonomy, Cover Templates, PDF Parser & `FastEmbed` ONNX vectorizer | **Implemented** *(9/9 tests passed)* |
 | **Cycle 2** | 5-Gate Pipeline: Gate 3 Boilerplate Stripper + 10-Field Extractor, Gate 1 Dealbreakers + Hidden Audit, Gate 2 4-Layer Sibling Role Identity + Side-by-Side JD Diff, Gate 4 Option 1 (`Tier S/A/B/C`) + Option 3 Semantic Bullet Proof + Cross-Resume Alerts, `/api/v1/jobs` API | **Implemented** *(All Cycle 2 logic & bug fixes complete)* |
 | **Cycle 2.5** | De-Hardcoding Refactor: 17 pipeline thresholds + CORS moved to `Settings`/`.env`; skills, cities & domain rules externalized to `backend/app/data/*.json` | **Implemented** *(16-test suite ready)* |
-| **Cycle 3 / 3.5** | Direct ATS JSON Collectors (Greenhouse, Lever, Ashby, SmartRecruiters, Workday CXS + India fallback), `python-jobspy` (Naukri default), 68-company India Watchlist seed, `429/403` Circuit Breaker, `404` `invalid_config`, Closed-Job Pruner, `asyncio.Semaphore` concurrency, FastAPI `lifespan` Scheduler | **Implemented** *(13 collector tests; 29 total)* |
+| **Cycle 3 / 3.5** | Direct ATS JSON Collectors (5 ATS + Workday India fallback + incremental detail fetch), `python-jobspy` (Naukri default), 68-company India Watchlist seed + `POST /verify`, `429/403` Circuit Breaker, `404` `invalid_config`, Closed-Job Pruner, `asyncio.Semaphore` concurrency, `GET /progress`, composite SQLite indexes, stale-run recovery, resumable checkpoints, rotating `data/app.log`, FastAPI `lifespan` Scheduler | **Implemented** *(17 collector tests; 33 total)* |
 | **Cycle 4** | Application Mini-CRM, Draft vs. Submitted tracking, Immutable Offline Snapshots, 30-Day Company Cooldowns, `/api/v1/extension/*` Bridge, ZIP Backup/Restore | **Planned** |
 | **Cycle 5** | Local React 19 + Vite + Tailwind Web Dashboard (`frontend/`) | **Planned** |
 | **Cycle 6** | Chromium Manifest V3 Extension (`chrome.sidePanel`), On-Demand DOM Harvester, Applied/Expired Watcher (`extension/`) | **Planned** |
@@ -104,7 +104,7 @@ python -m venv .venv
 # 2. Optional: create .env from template to tune any of the 17 pipeline thresholds
 Copy-Item .env.example .env
 
-# 3. Run the full automated backend test suite (29 tests; first run caches ~90 MB ONNX model)
+# 3. Run the full automated backend test suite (33 tests; first run caches ~90 MB ONNX model)
 .\.venv\Scripts\pytest.exe backend\tests -v
 
 # 4. Start the local FastAPI backend (Swagger UI available at http://127.0.0.1:8000/docs)

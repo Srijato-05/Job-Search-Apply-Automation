@@ -88,12 +88,51 @@ def create_db_engine(db_path: Path) -> Engine:
     return engine
 
 
+_COMPOSITE_INDEX_STATEMENTS = (
+    "CREATE INDEX IF NOT EXISTS idx_jobs_company_status ON jobs (company_slug, status);",
+    "CREATE INDEX IF NOT EXISTS idx_jobs_identity_lookup ON jobs (company_slug, normalized_title, normalized_city);",
+    "CREATE INDEX IF NOT EXISTS idx_collector_runs_lookup ON collector_runs (source_name, company_slug, id DESC);",
+    "CREATE INDEX IF NOT EXISTS idx_job_sources_job_portal ON job_sources (job_id, portal_name);",
+)
+
+
 def init_db(engine: Engine) -> None:
-    """Create all ORM tables and FTS5 virtual table triggers."""
+    """Create all ORM tables, composite indexes, and FTS5 virtual table triggers."""
     SQLModel.metadata.create_all(engine)
     with engine.begin() as conn:
         for stmt in _FTS5_SCHEMA_STATEMENTS:
             conn.execute(text(stmt))
+        for idx_stmt in _COMPOSITE_INDEX_STATEMENTS:
+            conn.execute(text(idx_stmt))
+
+
+def create_sqlite_snapshot(db_path: Path, backups_dir: Path, keep_last: int = 5) -> Optional[Path]:
+    """Create a WAL-safe online SQLite snapshot using sqlite3.Connection.backup()."""
+    import sqlite3
+    from datetime import datetime, timezone
+
+    if not db_path.exists():
+        return None
+    backups_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    dest = backups_dir / f"jobs_snapshot_{stamp}.db"
+
+    src_conn = sqlite3.connect(str(db_path))
+    dst_conn = sqlite3.connect(str(dest))
+    try:
+        src_conn.backup(dst_conn)
+    finally:
+        dst_conn.close()
+        src_conn.close()
+
+    # Rotate old snapshots, keeping only the newest `keep_last`
+    snapshots = sorted(backups_dir.glob("jobs_snapshot_*.db"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for old in snapshots[keep_last:]:
+        try:
+            old.unlink()
+        except OSError:
+            pass
+    return dest
 
 
 def search_jobs_fts(session: Session, query: str, limit: int = 50) -> list[int]:

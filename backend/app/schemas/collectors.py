@@ -17,8 +17,33 @@ class CollectorRunRequest(BaseModel):
     )
     force: bool = Field(
         default=False,
-        description="If True, bypasses active cooldown timers",
+        description="If True, bypasses active cooldown timers and resumable sweep checkpoints",
     )
+    hours_old: int = Field(
+        default=24,
+        ge=1,
+        le=720,
+        description="Lookback window in hours for JobSpy portal searches (e.g. 168 for initial 7-day seed)",
+    )
+    force_refresh_details: bool = Field(
+        default=False,
+        description="If True, re-fetches per-job detail JSONs even for already-known ATS external IDs",
+    )
+
+
+class CollectorProgressResponse(BaseModel):
+    """Live progress state for an in-flight or recently completed collection sweep."""
+
+    running: bool = False
+    target: Optional[str] = None
+    phase: str = "idle"
+    completed: int = 0
+    total: int = 0
+    current_item: Optional[str] = None
+    fetched_so_far: int = 0
+    new_so_far: int = 0
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
 
 
 class CollectorRunResponse(BaseModel):

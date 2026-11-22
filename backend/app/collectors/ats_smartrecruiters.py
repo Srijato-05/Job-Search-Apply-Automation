@@ -22,6 +22,8 @@ async def fetch_smartrecruiters_jobs(
     company_name: str,
     filter_india_only: bool = True,
     fetch_details: bool = True,
+    known_external_ids: Optional[set[str]] = None,
+    force_refresh_details: bool = False,
 ) -> list[RawJobInput]:
     """Fetch open postings from SmartRecruiters public API with optional detail fetching."""
     url = f"https://api.smartrecruiters.com/v1/companies/{company_id}/postings?limit=100"
@@ -58,9 +60,16 @@ async def fetch_smartrecruiters_jobs(
         ref_number = item.get("refNumber")
         job_url = f"https://jobs.smartrecruiters.com/{company_id}/{job_id}"
 
-        # Fetch detail for full job description if requested
+        # Incremental detail fetch: skip per-job detail HTTP call if already known in DB
+        skip_detail = (
+            not force_refresh_details
+            and known_external_ids is not None
+            and job_id in known_external_ids
+        )
+
+        # Fetch detail for full job description if requested and not skipped
         description = ""
-        if fetch_details:
+        if fetch_details and not skip_detail:
             detail_url = f"https://api.smartrecruiters.com/v1/companies/{company_id}/postings/{job_id}"
             try:
                 detail_resp = await client.get(detail_url, headers=headers, timeout=_DEFAULT_TIMEOUT)
