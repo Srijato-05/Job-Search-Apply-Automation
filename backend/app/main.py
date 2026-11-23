@@ -15,7 +15,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 
+from app.api.applications import router as applications_router
+from app.api.backup import router as backup_router
 from app.api.collectors import router as collectors_router
+from app.api.extension import router as extension_router
 from app.api.jobs import router as jobs_router
 from app.api.resumes import router as resumes_router
 from app.api.vault import router as vault_router
@@ -153,6 +156,9 @@ def create_app(
     app.include_router(jobs_router, prefix="/api/v1")
     app.include_router(watchlist_router, prefix="/api/v1")
     app.include_router(collectors_router, prefix="/api/v1")
+    app.include_router(applications_router, prefix="/api/v1")
+    app.include_router(extension_router, prefix="/api/v1")
+    app.include_router(backup_router, prefix="/api/v1")
 
     return app
 

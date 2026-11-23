@@ -1,6 +1,6 @@
 # Cycle-Wise Implementation Log
 
-Chronological record of everything built, tested, and fixed through **Cycle 3**.
+Chronological record of everything built, tested, and fixed through **Cycle 4**.
 
 ---
 
@@ -133,6 +133,25 @@ Chronological record of everything built, tested, and fixed through **Cycle 3**.
    - One-click concurrent watchlist board verifier (`POST /api/v1/watchlist/verify`) in [api/watchlist.py](file:///f:/Projects/JobAutomation/backend/app/api/watchlist.py).
    - 4 composite SQLite indexes + WAL-safe online snapshot helper (`create_sqlite_snapshot`) in [database.py](file:///f:/Projects/JobAutomation/backend/app/db/database.py).
    - Stale `"running"` run recovery (`recover_stale_runs`), 30-minute resumable sweep checkpoint (`last_polled_at`), 20 MB rotating log (`data/app.log`), and startup banner in [main.py](file:///f:/Projects/JobAutomation/backend/app/main.py).
-8. **7 New Tests ([test_collectors.py](file:///f:/Projects/JobAutomation/backend/tests/test_collectors.py)):** Bringing the full automated test suite to **33 tests** (`17` in `test_collectors.py`).
+8. **9 New Collector & Hardening Tests ([test_collectors.py](file:///f:/Projects/JobAutomation/backend/tests/test_collectors.py)):** Added transient `503` retry recovery and `409` overlap guard tests, bringing total collector tests to `19` (`35` total before Cycle 4).
+
+---
+
+## Cycle 4: Application Mini-CRM, Offline Snapshots, 30-Day Cooldowns, Extension Bridge & ZIP Backup/Restore
+
+### Built
+1. **Extension 4-State Banner Resolver ([applications/service.py](file:///f:/Projects/JobAutomation/backend/app/applications/service.py), [api/extension.py](file:///f:/Projects/JobAutomation/backend/app/api/extension.py), [schemas/extension.py](file:///f:/Projects/JobAutomation/backend/app/schemas/extension.py)):**
+   - `POST /api/v1/extension/check-page` resolves any active tab URL / Req ID / JD read-only via Gate 3 + Gate 2 identity detection into `NEW_ROLE`, `NEW_SIBLING_ROLE` (with live Side-by-Side JD Diff), `STARTED_BUT_NOT_SUBMITTED`, or `ALREADY_APPLIED` (even across reposted/mirror URLs).
+2. **Application Mini-CRM & Immutable Offline Snapshots ([api/applications.py](file:///f:/Projects/JobAutomation/backend/app/api/applications.py), [schemas/applications.py](file:///f:/Projects/JobAutomation/backend/app/schemas/applications.py)):**
+   - `POST /api/v1/applications/draft`: Records `autofill_started_at` with `stage="draft"` and `submitted_at=None`.
+   - `POST /api/v1/applications/{app_id}/submit`: Sets `submitted_at`, transitions to `applied`, and permanently freezes `jd_snapshot_text`, `resume_filename_snapshot`, and `submitted_answers_json` (preserving records even if the parent `jobs` row is later deleted via `ON DELETE SET NULL`).
+   - `GET /api/v1/applications`, `GET /api/v1/applications/{app_id}`, and `PATCH /api/v1/applications/{app_id}` across `draft`, `applied`, `oa`, `screen`, `interview`, `offer`, `rejected`, `withdrawn`.
+3. **30-Day Company Cooldown Tracker (`GET /api/v1/applications/cooldown/{company_slug}`):**
+   - Counts only trailing-30-day submitted applications against `MAX_COMPANY_APPS_30D` (`3` default), never drafts, returning remaining slots, limit warnings, and `next_slot_opens_at`.
+4. **1-Click WAL-Safe ZIP Backup Export & Restore ([applications/backup.py](file:///f:/Projects/JobAutomation/backend/app/applications/backup.py), [api/backup.py](file:///f:/Projects/JobAutomation/backend/app/api/backup.py)):**
+   - `GET /api/v1/backup/export` bundles `create_sqlite_snapshot()` (`jobs.db`), `resumes/*.pdf`, and `manifest.json`.
+   - `POST /api/v1/backup/restore` blocks Zip Slip path traversal, verifies SQLite `magic` header + `PRAGMA quick_check`, creates an automatic pre-restore safety snapshot, calls `engine.dispose()` to release Windows locks, removes stale `-wal`/`-shm` sidecars, and restores DB + PDFs cleanly.
+5. **End-to-End Lifecycle Tests ([test_applications_and_backup.py](file:///f:/Projects/JobAutomation/backend/tests/test_applications_and_backup.py)):**
+   - 3 comprehensive tests covering `Discovered` → `Draft` → `Submitted` → `Immutable Snapshot` → `Repost Red Banner` → `Sibling Diff`, 30-day cooldown math, and validated ZIP export/restore round-trip (**38 tests total**).
 
 

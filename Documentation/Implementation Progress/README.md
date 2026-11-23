@@ -1,8 +1,8 @@
 # Implementation Progress Dashboard
 
 > **Current Phase:** Stage 3 — Code & Test Cycles  
-> **Completed So Far:** Repo Setup, Stage 1–2 Docs, Cycle 1, Cycle 2, Cycle 2.5 (De-Hardcoding Refactor), and Cycle 3 (Job Collectors)  
-> **Pending:** Cycles 4–7
+> **Completed So Far:** Repo Setup, Stage 1–2 Docs, Cycle 1, Cycle 2, Cycle 2.5, Cycle 3 / 3.5, and Cycle 4 (Application Mini-CRM, Offline Snapshots & ZIP Backup)  
+> **Pending:** Cycles 5–7
 
 ---
 
@@ -15,8 +15,8 @@
 | **Cycle 2** | 5-Gate Pipeline (Gate 1 Dealbreakers + Hidden Audit, Gate 3 Boilerplate Stripper + 10-Field Extractor, Gate 2 4-Layer Role Identity + Sibling Diff, Gate 4 Combined Option 1 Tier `S/A/B/C` + Option 3 Semantic Bullets & Cross-Resume Alerts) & `/api/v1/jobs` API | **Complete** | **12 / 13 Passed** on prior run; final `_JR` fix verified via `test_gate3` (`py_compile` + `0.03s`) |
 | **Cycle 2.5** | De-Hardcoding Refactor: 17 thresholds + CORS moved to `Settings`/`.env`; cities, skills & domain rules moved to `backend/app/data/*.json` | **Complete** | **16 / 16 Passed** in visible PowerShell |
 | **Cycle 3** | Direct ATS JSON Collectors (`Greenhouse`, `Lever`, `Ashby`, `SmartRecruiters`, `Workday CXS`), `python-jobspy`, India Watchlist seed (68 companies), Circuit Breaker, Closed-Job Pruner, Async Scheduler | **Complete** | **10 collector tests** |
-| **Cycle 3.5** | Collector Polish & Hardening: FastAPI `lifespan` scheduler, Workday India fallback, `asyncio.Semaphore(5)` concurrency, incremental detail fetch, `404` → `invalid_config`, `POST /watchlist/verify`, `GET /collectors/progress`, composite SQLite indexes, stale-run recovery, resumable checkpoints, rotating `data/app.log` | **Complete** | **+7 tests (33 total)** |
-| **Cycle 4** | Application Mini-CRM, Draft vs. Submitted tracking, Immutable Offline Snapshots, 30-Day Company Cooldowns, `/api/v1/extension/*` Bridge, ZIP Backup/Restore | **Pending** | — |
+| **Cycle 3.5** | Collector Polish & Hardening: FastAPI `lifespan` scheduler, Workday India fallback, `asyncio.Semaphore(5)` concurrency, incremental detail fetch, `404` → `invalid_config`, `POST /watchlist/verify`, `GET /collectors/progress`, `409` overlap lock, `5xx` retries, composite SQLite indexes, stale-run recovery, resumable checkpoints, rotating `data/app.log` | **Complete** | **+9 tests (35 total)** |
+| **Cycle 4** | Application Mini-CRM (`draft -> applied -> oa -> screen -> interview -> offer -> rejected`), Immutable Offline Snapshots, 30-Day Company Cooldowns, `/api/v1/extension/check-page` 4-State Banner, ZIP Backup/Restore | **Complete** | **+3 lifecycle tests (38 total)** |
 | **Cycle 5** | Local React 19 + TypeScript + Vite + Tailwind Web Dashboard (`frontend/`) | **Pending** | — |
 | **Cycle 6** | Chromium Manifest V3 Extension (`chrome.sidePanel`), On-Demand DOM Harvester, Applied/Expired Watcher (`extension/`) | **Pending** | — |
 | **Cycle 7** | React/Angular DOM Autofill Engine, `DataTransfer` PDF Auto-Attach, Amber Pause-and-Learn, 13 Portal Adapters, `start.ps1` | **Pending** | — |

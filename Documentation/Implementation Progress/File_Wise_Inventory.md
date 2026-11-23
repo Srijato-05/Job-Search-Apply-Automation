@@ -1,6 +1,6 @@
 # File-Wise Implementation Inventory
 
-Complete inventory of every implemented file across the repository as of **Cycle 3**.
+Complete inventory of every implemented file across the repository as of **Cycle 4**.
 
 ---
 
@@ -91,18 +91,25 @@ Complete inventory of every implemented file across the repository as of **Cycle
 | [schemas/vault.py](file:///f:/Projects/JobAutomation/backend/app/schemas/vault.py) | Fact Vault & Q&A contracts | `FactVaultPayload`, `FactVaultResponse`, `QARuleCreate`, `QARuleResponse`, `TaxonomyNormalizeRequest/Response` | `test_vault_and_taxonomy.py` |
 | [schemas/resumes.py](file:///f:/Projects/JobAutomation/backend/app/schemas/resumes.py) | Resume registry contracts | `ResumeSummaryResponse`, `ResumeDetailResponse`, `ResumeBulletResponse`, `ResumeUpdatePayload` | `test_resumes_and_embeddings.py` |
 | [schemas/jobs.py](file:///f:/Projects/JobAutomation/backend/app/schemas/jobs.py) | Jobs, Scores & Diff contracts | `JobIngestItem`, `JobIngestBatchRequest`, `JobCardResponse`, `JobDetailResponse`, `JobDiffResponse`, `JobStatusUpdate` | `test_pipeline_and_jobs.py` |
-| [schemas/watchlist.py](file:///f:/Projects/JobAutomation/backend/app/schemas/watchlist.py) | Company & Watchlist contracts | `CompanyCreate`, `CompanyUpdate`, `CompanyResponse`, `WatchlistSeedResponse` | `test_collectors.py` |
-| [schemas/collectors.py](file:///f:/Projects/JobAutomation/backend/app/schemas/collectors.py) | Telemetry & Health contracts | `CollectorRunRequest`, `CollectorRunResponse`, `SourceHealthItem`, `CollectorHealthResponse` | `test_collectors.py` |
+| [schemas/watchlist.py](file:///f:/Projects/JobAutomation/backend/app/schemas/watchlist.py) | Company & Watchlist contracts | `CompanyCreate`, `CompanyUpdate`, `CompanyResponse`, `WatchlistSeedResponse`, `WatchlistVerifyResponse` | `test_collectors.py` |
+| [schemas/collectors.py](file:///f:/Projects/JobAutomation/backend/app/schemas/collectors.py) | Telemetry & Health contracts | `CollectorRunRequest`, `CollectorRunResponse`, `CollectorProgressResponse`, `SourceHealthItem`, `CollectorHealthResponse` | `test_collectors.py` |
+| [schemas/applications.py](file:///f:/Projects/JobAutomation/backend/app/schemas/applications.py) | Application CRM & Backup DTOs | `ApplicationStartDraftRequest`, `ApplicationSubmitRequest`, `ApplicationUpdateRequest`, `CooldownStatusResponse`, `ApplicationResponse`, `BackupRestoreResponse` | `test_applications_and_backup.py` |
+| [schemas/extension.py](file:///f:/Projects/JobAutomation/backend/app/schemas/extension.py) | Extension 4-State Banner DTOs | `BannerState`, `CheckPageRequest`, `CheckPageResponse` | `test_applications_and_backup.py` |
+| [applications/service.py](file:///f:/Projects/JobAutomation/backend/app/applications/service.py) | CRM, Cooldown & 4-State logic | `start_or_resume_draft`, `mark_application_submitted`, `update_application`, `get_company_cooldown_status`, `check_extension_page` | `test_applications_and_backup.py` |
+| [applications/backup.py](file:///f:/Projects/JobAutomation/backend/app/applications/backup.py) | ZIP Export & Restore engine | `export_backup_zip`, `restore_backup_zip` | `test_applications_and_backup.py` |
 | [api/deps.py](file:///f:/Projects/JobAutomation/backend/app/api/deps.py) | FastAPI dependency injectors | `get_settings`, `get_engine`, `get_embedder`, `get_session` | All API tests |
 | [api/vault.py](file:///f:/Projects/JobAutomation/backend/app/api/vault.py) | Vault, Q&A & Taxonomy API | `GET/PUT /vault`, `GET/POST/DELETE /vault/qa-rules`, `POST /vault/taxonomy/normalize`, `POST /vault/templates/render` | `test_vault_and_taxonomy.py` |
 | [api/resumes.py](file:///f:/Projects/JobAutomation/backend/app/api/resumes.py) | Multi-Resume PDF API | `GET/POST /resumes`, `GET/PATCH/DELETE /resumes/{id}`, `GET /resumes/{id}/file`, `POST /resumes/{id}/reparse` | `test_resumes_and_embeddings.py` |
 | [api/jobs.py](file:///f:/Projects/JobAutomation/backend/app/api/jobs.py) | Jobs Queue, Filter & Diff API | `POST /jobs/ingest`, `GET /jobs`, `GET /jobs/{id}`, `GET /jobs/{id}/diff/{sibling_id}`, `PATCH /jobs/{id}/status`, `POST /jobs/rescore` | `test_pipeline_and_jobs.py` |
-| [api/watchlist.py](file:///f:/Projects/JobAutomation/backend/app/api/watchlist.py) | Watchlist Management API | `GET/POST /watchlist`, `PATCH/DELETE /watchlist/{slug}`, `POST /watchlist/seed` | `test_collectors.py` |
-| [api/collectors.py](file:///f:/Projects/JobAutomation/backend/app/api/collectors.py) | Collector Trigger & Health API | `POST /collectors/run`, `GET /collectors/health`, `GET /collectors/runs` | `test_collectors.py` |
+| [api/watchlist.py](file:///f:/Projects/JobAutomation/backend/app/api/watchlist.py) | Watchlist Management API | `GET/POST /watchlist`, `PATCH/DELETE /watchlist/{slug}`, `POST /watchlist/seed`, `POST /watchlist/verify` | `test_collectors.py` |
+| [api/collectors.py](file:///f:/Projects/JobAutomation/backend/app/api/collectors.py) | Collector Trigger & Health API | `POST /collectors/run`, `GET /collectors/progress`, `GET /collectors/health`, `GET /collectors/runs` | `test_collectors.py` |
+| [api/applications.py](file:///f:/Projects/JobAutomation/backend/app/api/applications.py) | Application Mini-CRM API | `GET /applications`, `POST /applications/draft`, `POST /applications/{id}/submit`, `PATCH/GET /applications/{id}`, `GET /applications/cooldown/{slug}` | `test_applications_and_backup.py` |
+| [api/extension.py](file:///f:/Projects/JobAutomation/backend/app/api/extension.py) | Extension 4-State Bridge API | `POST /extension/check-page` | `test_applications_and_backup.py` |
+| [api/backup.py](file:///f:/Projects/JobAutomation/backend/app/api/backup.py) | 1-Click ZIP Backup API | `GET /backup/export`, `POST /backup/restore` | `test_applications_and_backup.py` |
 
 ---
 
-## 8. Automated Test Suite (`backend/tests/` — 33 Tests Across 6 Files)
+## 8. Automated Test Suite (`backend/tests/` — 38 Tests Across 7 Files)
 
 | File | Tests Count | Scope Covered |
 | :--- | :--- | :--- |
@@ -112,5 +119,6 @@ Complete inventory of every implemented file across the repository as of **Cycle
 | [test_resumes_and_embeddings.py](file:///f:/Projects/JobAutomation/backend/tests/test_resumes_and_embeddings.py) | 2 | Full Resume PDF upload/download/patch/reparse/cascade-delete + real `BAAI/bge-small-en-v1.5` semantic ranking |
 | [test_pipeline_and_jobs.py](file:///f:/Projects/JobAutomation/backend/tests/test_pipeline_and_jobs.py) | 4 | Boilerplate strip + 10-field extraction, Gate 1 audit/unhide, Gate 2 sibling roles + diff, Gate 4 Option 1+3 routing + alerts + Gate 5 filters |
 | [test_config_and_data.py](file:///f:/Projects/JobAutomation/backend/tests/test_config_and_data.py) | 3 | JSON file loading, `Settings` threshold override checks on Gate 1, Gate 4, and `orchestrator.ingest_job` |
-| [test_collectors.py](file:///f:/Projects/JobAutomation/backend/tests/test_collectors.py) | 17 | Location filtering, Watchlist seeding/CRUD/verify, 5 ATS connectors + Workday India fallback & incremental detail skip, 429 circuit breaker, 404 `invalid_config`, closed-job pruner, stale-run recovery, resumable checkpoints, composite indexes, online snapshot, and HTTP API routes |
+| [test_collectors.py](file:///f:/Projects/JobAutomation/backend/tests/test_collectors.py) | 19 | Location filtering, Watchlist seeding/CRUD/verify, 5 ATS connectors + Workday India fallback & incremental detail skip, 429 circuit breaker, 404 `invalid_config`, `503` retries, `409` overlap lock, closed-job pruner, stale-run recovery, resumable checkpoints, composite indexes, online snapshot, and HTTP API routes |
+| [test_applications_and_backup.py](file:///f:/Projects/JobAutomation/backend/tests/test_applications_and_backup.py) | 3 | `Discovered -> Draft -> Submitted -> Immutability -> Repost Red Banner -> Sibling Diff`, 30-day cooldown cap, and validated ZIP export/restore round-trip |
 
