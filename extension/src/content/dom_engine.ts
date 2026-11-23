@@ -65,7 +65,7 @@ export function setNativeInputValue(
 }
 
 const SUBMIT_CONTROL_RE =
-  /\b(?:submit(?:\s+(?:application|form|now))?|apply\s+now|easy\s+apply|send\s+application|confirm\s+(?:and\s+)?(?:submit|apply)|complete\s+application|finish\s+application|final\s+submit)\b/i;
+  /\b(?:submit(?:[\s_-]+(?:application|form|now))?|apply[\s_-]+now|easy[\s_-]+apply|send[\s_-]+application|confirm[\s_-]+(?:and[\s_-]+)?(?:submit|apply)|complete[\s_-]+application|finish[\s_-]+application|final[\s_-]+submit)\b/i;
 
 /**
  * Hard guard identifying any button, input, or ARIA trigger that could submit or apply.

@@ -90,6 +90,8 @@ def restore_backup_zip(
                 res = check_conn.execute("PRAGMA quick_check;").fetchone()
                 if not res or res[0] != "ok":
                     raise ValueError(f"SQLite integrity check failed: {res}")
+            except sqlite3.DatabaseError as exc:
+                raise ValueError(f"Corrupted SQLite database in archive: {exc}") from exc
             finally:
                 check_conn.close()
         finally:

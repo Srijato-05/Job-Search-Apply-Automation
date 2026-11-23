@@ -137,15 +137,25 @@ def create_sqlite_snapshot(db_path: Path, backups_dir: Path, keep_last: int = 5)
 
 def search_jobs_fts(session: Session, query: str, limit: int = 50) -> list[int]:
     """Run an offline SQLite FTS5 boolean query and return matching job IDs by BM25."""
+    from sqlalchemy.exc import OperationalError
+
     cleaned = query.strip()
     if not cleaned:
         return []
-    rows = session.exec(
-        text(
-            "SELECT rowid FROM jobs_fts WHERE jobs_fts MATCH :query "
-            "ORDER BY bm25(jobs_fts) LIMIT :limit"
-        ),
-        params={"query": cleaned, "limit": limit},
-    ).all()
+    stmt = text(
+        "SELECT rowid FROM jobs_fts WHERE jobs_fts MATCH :query "
+        "ORDER BY bm25(jobs_fts) LIMIT :limit"
+    )
+    try:
+        rows = session.exec(stmt, params={"query": cleaned, "limit": limit}).all()
+    except OperationalError:
+        # Fallback for malformed boolean syntax (e.g. unbalanced quotes/parens): quote as literal tokens
+        safe_tokens = [f'"{tok.replace(chr(34), "")}"' for tok in cleaned.split() if tok.replace('"', "").strip()]
+        if not safe_tokens:
+            return []
+        try:
+            rows = session.exec(stmt, params={"query": " ".join(safe_tokens), "limit": limit}).all()
+        except OperationalError:
+            return []
     return [int(row[0]) for row in rows]
 
