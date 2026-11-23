@@ -1,6 +1,6 @@
 # Cycle-Wise Implementation Log
 
-Chronological record of everything built, tested, and fixed through **Cycle 4**.
+Chronological record of everything built, tested, and fixed through **Cycle 7** (All Cycles Complete).
 
 ---
 
@@ -153,5 +153,44 @@ Chronological record of everything built, tested, and fixed through **Cycle 4**.
    - `POST /api/v1/backup/restore` blocks Zip Slip path traversal, verifies SQLite `magic` header + `PRAGMA quick_check`, creates an automatic pre-restore safety snapshot, calls `engine.dispose()` to release Windows locks, removes stale `-wal`/`-shm` sidecars, and restores DB + PDFs cleanly.
 5. **End-to-End Lifecycle Tests ([test_applications_and_backup.py](file:///f:/Projects/JobAutomation/backend/tests/test_applications_and_backup.py)):**
    - 3 comprehensive tests covering `Discovered` → `Draft` → `Submitted` → `Immutable Snapshot` → `Repost Red Banner` → `Sibling Diff`, 30-day cooldown math, and validated ZIP export/restore round-trip (**38 tests total**).
+
+---
+
+## Cycle 5: Local Web Dashboard (`React 19 + TypeScript + Vite + Tailwind`)
+
+### Built
+1. **Frontend Workspace Scaffold (`frontend/`):** Configured Vite + Tailwind CSS v4 + TypeScript + Vitest (`jsdom` + Testing Library) in [package.json](file:///f:/Projects/JobAutomation/frontend/package.json) and [vite.config.ts](file:///f:/Projects/JobAutomation/frontend/vite.config.ts) with dev proxy to `127.0.0.1:8000`.
+2. **Typed API Client ([types.ts](file:///f:/Projects/JobAutomation/frontend/src/api/types.ts), [client.ts](file:///f:/Projects/JobAutomation/frontend/src/api/client.ts)):** Full TypeScript bindings for all `/api/v1` endpoints with automatic `X-Local-Token` resolution and dev fallback prompt in [App.tsx](file:///f:/Projects/JobAutomation/frontend/src/App.tsx).
+3. **All 5 Views + `JobDetailDrawer`:**
+   - [JobQueuePage.tsx](file:///f:/Projects/JobAutomation/frontend/src/pages/JobQueuePage.tsx) — Tier chips (`S/A/B/C`), Resume Track selector, `Fresh <= 6h`, `Missing Primary <= N`, Friction, City, FTS5 boolean search, Re-score All, and Gate 1 Hidden Audit tab with 1-click Unhide.
+   - [JobDetailDrawer.tsx](file:///f:/Projects/JobAutomation/frontend/src/components/JobDetailDrawer.tsx) — Option 1+3 Bullet Proof Table, Cross-Resume Bullet Alerts, Side-by-Side Sibling JD Diff Viewer, 30-Day Cooldown badge, and Draft/Apply actions.
+   - [ApplicationsPage.tsx](file:///f:/Projects/JobAutomation/frontend/src/pages/ApplicationsPage.tsx) — CRM stage tabs, inline stage selector, recruiter notes, and Immutable Offline Snapshot modal.
+   - [FactVaultPage.tsx](file:///f:/Projects/JobAutomation/frontend/src/pages/FactVaultPage.tsx) — India Fact Vault editor, PII-guarded Learned Q&A rules manager, and 1-click ZIP Backup Export & Restore.
+   - [ResumesPage.tsx](file:///f:/Projects/JobAutomation/frontend/src/pages/ResumesPage.tsx) — Multi-resume PDF uploader, extracted verbatim bullets viewer, and reparse/delete controls.
+   - [CollectorsPage.tsx](file:///f:/Projects/JobAutomation/frontend/src/pages/CollectorsPage.tsx) — Live sweep progress polling, Run ATS / JobSpy / Verify Boards controls, Source Health badges, and 68+ company Watchlist CRUD.
+4. **FastAPI Production Static Serving ([main.py](file:///f:/Projects/JobAutomation/backend/app/main.py)):** Mounts `frontend/dist/assets` and serves `index.html` on `/` with `window.__JOB_AUTOMATION_TOKEN__` injected for zero-friction loopback access.
+5. **Vitest Component Tests ([Dashboard.test.tsx](file:///f:/Projects/JobAutomation/frontend/src/__tests__/Dashboard.test.tsx)):** 3 tests covering tier filtering + FTS5 search + Hidden Audit tab, `JobDetailDrawer` Option 1+3 proof + Cross-Resume Alert + Sibling Diff, and `ApplicationsPage` Offline Snapshot viewer + `FactVaultPage` save.
+
+---
+
+## Cycle 6: Chromium Manifest V3 Extension Core (`extension/`)
+
+### Built
+1. **MV3 Scaffold ([manifest.json](file:///f:/Projects/JobAutomation/extension/public/manifest.json), [package.json](file:///f:/Projects/JobAutomation/extension/package.json), [vite.config.ts](file:///f:/Projects/JobAutomation/extension/vite.config.ts)):** Multi-entry Vite build producing `dist/background.js`, `dist/content.js`, and `dist/sidepanel.html` with `sidePanel`, `activeTab`, `scripting`, `storage`, and `127.0.0.1:8000` permissions.
+2. **Background Service Worker ([background/index.ts](file:///f:/Projects/JobAutomation/extension/src/background/index.ts)):** Handles `X-Local-Token` persistence (`chrome.storage.local`), `API_REQUEST` proxy, `FETCH_RESUME_PDF` binary proxy for `DataTransfer` injection, and lifecycle auto-sync (`CONFIRMATION_SEEN`, `NATIVE_APPLIED_DETECTED`, `EXPIRED_DETECTED`).
+3. **Side Panel UI ([sidepanel.html](file:///f:/Projects/JobAutomation/extension/sidepanel.html), [sidepanel/main.ts](file:///f:/Projects/JobAutomation/extension/src/sidepanel/main.ts)):** 4-State Banner (`NEW_ROLE`, `NEW_SIBLING_ROLE`, `STARTED_BUT_NOT_SUBMITTED`, `ALREADY_APPLIED`), Winning Resume track badge, 30-day Cooldown alert, **"+ Watch Company ATS"** ([ats_detector.ts](file:///f:/Projects/JobAutomation/extension/src/shared/ats_detector.ts)), and **"Capture Visible Jobs"**.
+4. **On-Demand DOM Harvester & Submit/Expired Watcher ([harvester.ts](file:///f:/Projects/JobAutomation/extension/src/content/harvester.ts), [submit_watcher.ts](file:///f:/Projects/JobAutomation/extension/src/content/submit_watcher.ts), [content/index.ts](file:///f:/Projects/JobAutomation/extension/src/content/index.ts)):** Card harvesting for Naukri, LinkedIn, Instahyre, Hirist, Cutshort, Foundit, and CareerBuilder plus mutation-observed Applied/Confirmation/Expired detection.
+5. **Vitest + `jsdom` Suite ([extension.test.ts](file:///f:/Projects/JobAutomation/extension/src/__tests__/extension.test.ts)):** 3 test suites verifying ATS URL token extraction, multi-portal DOM card parsing, and Applied/Expired detection without false positives.
+
+---
+
+## Cycle 7: Deterministic Autofill Engine, 13 Portal Adapters, Amber Pause-and-Learn & Windows `start.ps1`
+
+### Built
+1. **DOM Engine, PII Guard & Anti-Autosubmit Failsafes ([dom_engine.ts](file:///f:/Projects/JobAutomation/extension/src/content/dom_engine.ts), [pii_guard.ts](file:///f:/Projects/JobAutomation/extension/src/content/pii_guard.ts)):** Native React/Angular prototype value setters + bubbling events, `DataTransfer` PDF attachment, native `<select>` + ARIA option matching, Amber highlighting, PAN/Aadhaar/DoB/Bank blocking, plus multi-layer anti-autosubmit guards (`isSubmitLikeControl`, `selectNativeOrAriaOption` guard, capture-phase `withAutoSubmitShield` cancelling `submit` & submit clicks during autofill).
+2. **13 Isolated Portal Adapters (`extension/src/content/adapters/`):** `greenhouse`, `lever`, `ashby`, `smartrecruiters`, `workday`, `naukri` (including `.chatbot_Drawer` prompts), `linkedin` (Easy Apply), `indeed`, `instahyre`, `foundit`, `hirist`, `cutshort`, and `generic_heuristic`.
+3. **Side Panel Autofill & Amber Pause-and-Learn ([sidepanel.html](file:///f:/Projects/JobAutomation/extension/sidepanel.html), [sidepanel/main.ts](file:///f:/Projects/JobAutomation/extension/src/sidepanel/main.ts)):** Manual-click trigger recording `draft`, injecting Vault + Q&A + PDF via `RUN_AUTOFILL`, prompting `MANUAL REVIEW REQUIRED`, and saving new verified answers into `/api/v1/vault/qa-rules`.
+4. **1-Click Windows Launcher ([start.ps1](file:///f:/Projects/JobAutomation/start.ps1)):** Launches Uvicorn on `127.0.0.1:8000` and opens the dashboard once `/health` is ready.
+5. **Vitest Autofill Suite ([autofill.test.ts](file:///f:/Projects/JobAutomation/extension/src/__tests__/autofill.test.ts)):** 5 suites covering all 13 registered adapters, Greenhouse `DataTransfer` PDF + PII block + zero auto-submit, Workday select/inputs + LinkedIn Easy Apply, Naukri Chatbot drawer, and multi-layer anti-autosubmit failsafes.
 
 

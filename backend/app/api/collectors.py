@@ -192,3 +192,41 @@ def get_recent_runs(
     stmt = stmt.order_by(CollectorRun.id.desc()).limit(limit)  # type: ignore[attr-defined]
     return list(session.exec(stmt).all())
 
+
+@router.get("/scheduler")
+def get_scheduler_status(
+    request: Request,
+    settings: Settings = Depends(get_settings),
+) -> dict[str, object]:
+    """Return whether the background periodic collector scheduler is running."""
+    scheduler = getattr(request.app.state, "scheduler", None)
+    running = bool(scheduler.is_running()) if scheduler is not None else False
+    return {"running": running, "interval_hours": settings.collector_interval_hours}
+
+
+@router.post("/scheduler/start")
+def start_scheduler(
+    request: Request,
+    settings: Settings = Depends(get_settings),
+    embedder: EmbedderProtocol = Depends(get_embedder),
+) -> dict[str, object]:
+    """Manually start the background periodic collector scheduler."""
+    scheduler = getattr(request.app.state, "scheduler", None)
+    if scheduler is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Scheduler not initialized")
+    scheduler.start(embedder=embedder)
+    return {"running": bool(scheduler.is_running()), "interval_hours": settings.collector_interval_hours}
+
+
+@router.post("/scheduler/stop")
+def stop_scheduler(
+    request: Request,
+    settings: Settings = Depends(get_settings),
+) -> dict[str, object]:
+    """Manually stop the background periodic collector scheduler."""
+    scheduler = getattr(request.app.state, "scheduler", None)
+    if scheduler is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Scheduler not initialized")
+    scheduler.stop()
+    return {"running": bool(scheduler.is_running()), "interval_hours": settings.collector_interval_hours}
+

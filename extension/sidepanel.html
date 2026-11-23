@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JobAutomation Copilot</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, sans-serif;
+        background: #020617;
+        color: #f1f5f9;
+      }
+      .wrap { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+      .card {
+        background: #0f172a;
+        border: 1px solid #1e293b;
+        border-radius: 10px;
+        padding: 12px;
+      }
+      .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+      .banner {
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 13px;
+        border: 1px solid #334155;
+      }
+      .banner.NEW_ROLE { background: #082f49; border-color: #0284c7; color: #e0f2fe; }
+      .banner.NEW_SIBLING_ROLE { background: #2e1065; border-color: #9333ea; color: #f3e8ff; }
+      .banner.STARTED_BUT_NOT_SUBMITTED { background: #451a03; border-color: #d97706; color: #fef3c7; }
+      .banner.ALREADY_APPLIED { background: #450a0a; border-color: #dc2626; color: #fee2e2; }
+      button {
+        cursor: pointer;
+        border: 1px solid #334155;
+        background: #1e293b;
+        color: #f8fafc;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      button.primary { background: #0284c7; border-color: #0284c7; }
+      button.success { background: #059669; border-color: #059669; }
+      button.warn { background: #b45309; border-color: #d97706; }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        background: #020617;
+        border: 1px solid #334155;
+        color: #f8fafc;
+        border-radius: 6px;
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+      .muted { color: #94a3b8; font-size: 12px; }
+      .hidden { display: none; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="row">
+        <div>
+          <strong style="font-size: 14px">JobAutomation Copilot</strong>
+          <div class="muted" id="tabPortal">Inspecting active tab…</div>
+        </div>
+        <button id="toggleSettingsBtn" type="button">Token</button>
+      </div>
+
+      <form id="settingsPanel" class="card hidden" style="display: flex; flex-direction: column; gap: 8px">
+        <div class="muted">Paste X-Local-Token from <code>data/.local_token</code>:</div>
+        <input id="tokenInput" type="password" placeholder="X-Local-Token" />
+        <input id="urlInput" type="text" placeholder="http://127.0.0.1:8000" />
+        <button id="saveSettingsBtn" class="primary" type="submit">Save Connection</button>
+      </form>
+
+      <div id="bannerBox" class="banner NEW_ROLE">
+        <strong id="bannerTitle">Checking page…</strong>
+        <div id="bannerMsg" class="muted" style="margin-top: 4px; color: inherit"></div>
+      </div>
+
+      <div id="resumeCard" class="card hidden">
+        <div class="muted">Recommended Resume Track</div>
+        <div id="resumeText" style="margin-top: 4px; font-weight: 600; font-size: 13px"></div>
+      </div>
+
+      <div id="cooldownCard" class="card hidden">
+        <div class="muted">30-Day Company Cooldown</div>
+        <div id="cooldownText" style="margin-top: 4px; font-size: 12px"></div>
+      </div>
+
+      <div id="diffCard" class="card hidden">
+        <div class="muted">Sibling Role JD Diff</div>
+        <div id="diffText" style="margin-top: 4px; font-size: 12px"></div>
+      </div>
+
+      <div class="card" style="display: flex; flex-direction: column; gap: 8px">
+        <button id="autofillBtn" class="success" type="button">Autofill Form (Pause at Submit)</button>
+        <button id="refreshBtn" type="button">Refresh Page Check</button>
+        <button id="watchAtsBtn" class="warn hidden" type="button">+ Watch Company ATS</button>
+        <button id="captureJobsBtn" class="primary" type="button">Capture Visible Jobs</button>
+        <div id="statusLog" class="muted"></div>
+      </div>
+
+      <div id="amberLearnCard" class="card hidden" style="border-color: #d97706">
+        <strong style="font-size: 12px; color: #fbbf24">Amber Pause-and-Learn (Unknown Fields)</strong>
+        <div id="amberFieldsList" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px"></div>
+      </div>
+    </div>
+    <script type="module" src="/src/sidepanel/main.ts"></script>
+  </body>
+</html>
+

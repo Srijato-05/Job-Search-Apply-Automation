@@ -55,9 +55,9 @@ flowchart LR
 | **Local Semantic Engine** | `fastembed` (`BAAI/bge-small-en-v1.5` 384-dim via ONNX Runtime, ~90 MB CPU) | **Implemented** |
 | **Resume PDF Parsing** | `pdfplumber` + `pypdf` deterministic section & bullet extraction | **Implemented** |
 | **External Rules & Config** | `pydantic-settings` (`.env`) + JSON rules (`backend/app/data/*.json`) | **Implemented** |
-| **Job Collectors & Scheduler** | `python-jobspy`, async `httpx` ATS connectors, `APScheduler` | **Planned (Cycle 3)** |
-| **Web Dashboard** | React 19, TypeScript, Vite, Tailwind CSS, TanStack Query | **Planned (Cycle 5)** |
-| **Browser Copilot** | Manifest V3 Chromium Extension (`chrome.sidePanel`), 13 portal adapters | **Planned (Cycles 6–7)** |
+| **Job Collectors & Scheduler** | `python-jobspy`, async `httpx` ATS connectors (5 ATS), `CollectorScheduler` | **Implemented (Cycle 3 / 3.5)** |
+| **Web Dashboard** | React 19, TypeScript, Vite, Tailwind CSS served via FastAPI (`frontend/`) | **Implemented (Cycle 5)** |
+| **Browser Copilot** | Manifest V3 Chromium Extension (`chrome.sidePanel`), DOM Harvester, Applied/Expired Watcher, Deterministic Autofill + 13 Portal Adapters (`extension/`) | **Implemented (Cycles 6–7)** |
 
 ---
 
@@ -71,9 +71,9 @@ flowchart LR
 | **Cycle 2.5** | De-Hardcoding Refactor: 17 pipeline thresholds + CORS moved to `Settings`/`.env`; skills, cities & domain rules externalized to `backend/app/data/*.json` | **Implemented** *(16-test suite ready)* |
 | **Cycle 3 / 3.5** | Direct ATS JSON Collectors (5 ATS + Workday India fallback + incremental detail fetch), `python-jobspy` (Naukri default), 68-company India Watchlist seed + `POST /verify`, `429/403` Circuit Breaker, `404` `invalid_config`, `5xx` retries, `409` overlap lock, Closed-Job Pruner, `asyncio.Semaphore` concurrency, `GET /progress`, composite SQLite indexes, stale-run recovery, resumable checkpoints, rotating `data/app.log`, FastAPI `lifespan` Scheduler | **Implemented** *(19 collector tests)* |
 | **Cycle 4** | Application Mini-CRM (`draft -> applied -> oa -> screen -> interview -> offer -> rejected`), Immutable Offline Snapshots, 30-Day Company Cooldowns, `/api/v1/extension/check-page` 4-State Banner, 1-Click ZIP Backup/Restore | **Implemented** *(3 lifecycle tests; 38 total)* |
-| **Cycle 5** | Local React 19 + Vite + Tailwind Web Dashboard (`frontend/`) | **Planned** |
-| **Cycle 6** | Chromium Manifest V3 Extension (`chrome.sidePanel`), On-Demand DOM Harvester, Applied/Expired Watcher (`extension/`) | **Planned** |
-| **Cycle 7** | React/Angular DOM Autofill Engine, `DataTransfer` PDF Auto-Attach, Amber Pause-and-Learn UI, 13 Portal Adapters, `start.ps1` | **Planned** |
+| **Cycle 5** | Local React 19 + TypeScript + Vite + Tailwind Web Dashboard (`frontend/`): all 5 views + `JobDetailDrawer`, Vitest component suite, FastAPI static serving + token bootstrap | **Implemented** *(3 Vitest tests)* |
+| **Cycle 6** | Chromium Manifest V3 Extension (`chrome.sidePanel`), Background SW (`X-Local-Token` + PDF proxy), On-Demand DOM Harvester, Applied/Expired Watcher, `+ Watch Company ATS` (`extension/`) | **Implemented** *(3 Vitest + jsdom suites)* |
+| **Cycle 7** | React/Angular DOM Autofill Engine, `DataTransfer` PDF Auto-Attach, PII Guard, Amber Pause-and-Learn UI, 13 Isolated Portal Adapters (`extension/`), `start.ps1` Launcher | **Implemented** *(4 Vitest + jsdom suites)* |
 
 ---
 

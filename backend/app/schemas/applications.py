@@ -84,3 +84,29 @@ class BackupRestoreResponse(BaseModel):
     safety_snapshot_path: Optional[str] = None
     message: str
 
+
+class SkillGapCount(BaseModel):
+    """Count of active Tier A/B jobs missing a given primary skill."""
+
+    skill: str
+    count: int
+
+
+class TrackSkillGapItem(BaseModel):
+    """Near-miss primary skills grouped per resume track (same/similar stack only)."""
+
+    resume_id: int
+    track_name: str
+    evaluated_ab_jobs: int
+    top_missing_skills: list[SkillGapCount] = Field(default_factory=list)
+
+
+class AnalyticsSummaryResponse(BaseModel):
+    """Application CRM conversion funnel + per-track Tier A/B skill gaps."""
+
+    total_drafts: int = 0
+    total_submitted: int = 0
+    response_rate_pct: float = 0.0
+    stage_counts: dict[str, int] = Field(default_factory=dict)
+    track_skill_gaps: list[TrackSkillGapItem] = Field(default_factory=list)
+

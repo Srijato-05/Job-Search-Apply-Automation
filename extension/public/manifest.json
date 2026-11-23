@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "JobAutomation Copilot (India Tech)",
+  "version": "0.1.0",
+  "description": "Local-first 4-state job deduplication, portal harvester, applied/expired watcher, and assistive copilot.",
+  "permissions": ["sidePanel", "activeTab", "scripting", "storage"],
+  "host_permissions": ["http://127.0.0.1:8000/*", "http://localhost:8000/*"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Open JobAutomation Copilot"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.naukri.com/*",
+        "https://*.linkedin.com/jobs/*",
+        "https://*.indeed.com/*",
+        "https://*.indeed.co.in/*",
+        "https://*.glassdoor.co.in/*",
+        "https://*.glassdoor.com/*",
+        "https://*.instahyre.com/*",
+        "https://*.hirist.tech/*",
+        "https://*.hirist.com/*",
+        "https://*.cutshort.io/*",
+        "https://*.foundit.in/*",
+        "https://*.careerbuilder.co.in/*",
+        "https://*.careerbuilder.com/*",
+        "https://boards.greenhouse.io/*",
+        "https://job-boards.greenhouse.io/*",
+        "https://jobs.lever.co/*",
+        "https://jobs.ashbyhq.com/*",
+        "https://jobs.smartrecruiters.com/*",
+        "https://*.myworkdayjobs.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
+

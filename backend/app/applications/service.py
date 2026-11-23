@@ -22,11 +22,14 @@ from app.pipeline.gate2_identity import compute_jd_diff, resolve_job_identity
 from app.pipeline.gate3_extractor import extract_job_signals, slugify_company
 from app.resumes.embedder import EmbedderProtocol
 from app.schemas.applications import (
+    AnalyticsSummaryResponse,
     ApplicationResponse,
     ApplicationStartDraftRequest,
     ApplicationSubmitRequest,
     ApplicationUpdateRequest,
     CooldownStatusResponse,
+    SkillGapCount,
+    TrackSkillGapItem,
 )
 from app.schemas.extension import CheckPageRequest, CheckPageResponse
 from app.schemas.jobs import JobDiffResponse, WinningScoreSummary
@@ -541,5 +544,74 @@ def check_extension_page(
         req_id=signals.req_id if signals else None,
         cooldown=cooldown,
         message=f"New unapplied role at {company_name or 'company'}.",
+    )
+
+
+def compute_analytics_summary(session: Session) -> AnalyticsSummaryResponse:
+    """Compute CRM stage funnel metrics and per-track Tier A/B missing primary skills.
+
+    Filtering strictly to `tier in ('A', 'B')` & `is_winning_resume == True` ensures unrelated
+    stacks (hard-capped at Tier C by Gate 4 core-language/archetype guards) are never mixed in.
+    """
+    apps = list(session.exec(select(Application)).all())
+    stage_counts: dict[str, int] = {}
+    total_drafts = 0
+    total_submitted = 0
+    responses = 0
+
+    for app in apps:
+        st = (app.stage or "draft").lower()
+        stage_counts[st] = stage_counts.get(st, 0) + 1
+        if st == "draft" and app.submitted_at is None:
+            total_drafts += 1
+        else:
+            total_submitted += 1
+            if st in ("oa", "screen", "interview", "offer"):
+                responses += 1
+
+    response_rate = round((100.0 * responses / total_submitted), 1) if total_submitted > 0 else 0.0
+
+    # Aggregate Tier A/B missing skills grouped per winning resume track on active jobs
+    resumes_by_id = {int(r.id): r for r in session.exec(select(Resume)).all()}
+    ab_scores = list(
+        session.exec(
+            select(JobResumeScore)
+            .join(Job, Job.id == JobResumeScore.job_id)  # type: ignore[arg-type]
+            .where(
+                Job.status == "active",
+                Job.hidden_by_gate1.is_(False),
+                JobResumeScore.is_winning_resume.is_(True),
+                JobResumeScore.tier.in_(["A", "B"]),  # type: ignore[attr-defined]
+            )
+        ).all()
+    )
+
+    by_resume: dict[int, list[JobResumeScore]] = {}
+    for sc in ab_scores:
+        by_resume.setdefault(int(sc.resume_id), []).append(sc)
+
+    track_gaps: list[TrackSkillGapItem] = []
+    for rid, rows in by_resume.items():
+        counts: dict[str, int] = {}
+        for sc in rows:
+            for sk in sc.missing_primary_skills_json or []:
+                counts[sk] = counts.get(sk, 0) + 1
+        sorted_skills = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:6]
+        res = resumes_by_id.get(rid)
+        track_gaps.append(
+            TrackSkillGapItem(
+                resume_id=rid,
+                track_name=res.track_name if res is not None else f"Resume #{rid}",
+                evaluated_ab_jobs=len(rows),
+                top_missing_skills=[SkillGapCount(skill=s, count=c) for s, c in sorted_skills],
+            )
+        )
+
+    return AnalyticsSummaryResponse(
+        total_drafts=total_drafts,
+        total_submitted=total_submitted,
+        response_rate_pct=response_rate,
+        stage_counts=stage_counts,
+        track_skill_gaps=track_gaps,
     )
 

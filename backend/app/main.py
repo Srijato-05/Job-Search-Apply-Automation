@@ -5,14 +5,17 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 import hmac
+import json
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session, select
 
 from app.api.applications import router as applications_router
@@ -159,6 +162,41 @@ def create_app(
     app.include_router(applications_router, prefix="/api/v1")
     app.include_router(extension_router, prefix="/api/v1")
     app.include_router(backup_router, prefix="/api/v1")
+
+    # Serve production React build (frontend/dist) if built, injecting loopback X-Local-Token
+    dist_dir = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+    assets_dir = dist_dir / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="frontend_assets")
+
+    def _render_spa_html() -> HTMLResponse:
+        index_file = dist_dir / "index.html"
+        if not index_file.exists():
+            return HTMLResponse(
+                content=(
+                    "<html><body><h2>JobAutomation Backend Running</h2>"
+                    "<p>Frontend bundle not built yet. Run <code>cd frontend && npm run build</code> "
+                    "or visit <a href='/docs'>/docs</a>.</p></body></html>"
+                ),
+                status_code=200,
+            )
+        html_text = index_file.read_text(encoding="utf-8")
+        token_script = f"<script>window.__JOB_AUTOMATION_TOKEN__ = {json.dumps(local_token)};</script>"
+        if "</head>" in html_text:
+            html_text = html_text.replace("</head>", f"  {token_script}\n  </head>", 1)
+        else:
+            html_text = f"{token_script}\n{html_text}"
+        return HTMLResponse(content=html_text, status_code=200)
+
+    @app.get("/", include_in_schema=False)
+    def serve_spa_root() -> HTMLResponse:
+        return _render_spa_html()
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_spa_fallback(full_path: str) -> HTMLResponse:
+        if full_path.startswith(("api/", "docs", "redoc", "openapi.json", "health")):
+            raise HTTPException(status_code=404, detail="Not Found")
+        return _render_spa_html()
 
     return app
 

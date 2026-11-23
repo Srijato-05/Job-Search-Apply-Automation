@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     collector_interval_hours: int = 4
     collector_max_concurrency: int = 5
     ats_http_timeout_sec: float = 15.0
-    enable_background_scheduler: bool = True
+    enable_background_scheduler: bool = False
     max_company_apps_30d: int = 3
 
     # 5-Gate Pipeline Thresholds (Tunable without code edits)

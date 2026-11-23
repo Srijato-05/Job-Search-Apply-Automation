@@ -11,6 +11,7 @@ from app.api.deps import get_session, get_settings
 from app.applications.service import (
     VALID_STAGES,
     build_application_response,
+    compute_analytics_summary,
     get_company_cooldown_status,
     mark_application_submitted,
     start_or_resume_draft,
@@ -19,6 +20,7 @@ from app.applications.service import (
 from app.config import Settings
 from app.db.models import Application
 from app.schemas.applications import (
+    AnalyticsSummaryResponse,
     ApplicationResponse,
     ApplicationStartDraftRequest,
     ApplicationSubmitRequest,
@@ -73,6 +75,14 @@ def read_company_cooldown(
 ) -> CooldownStatusResponse:
     """Check trailing 30-day submitted application count vs. company cooldown cap."""
     return get_company_cooldown_status(session, company_slug.strip().lower(), settings=settings)
+
+
+@router.get("/analytics", response_model=AnalyticsSummaryResponse)
+def get_application_analytics(
+    session: Session = Depends(get_session),
+) -> AnalyticsSummaryResponse:
+    """Return CRM conversion funnel and per-track Tier A/B missing primary skills."""
+    return compute_analytics_summary(session)
 
 
 @router.get("/{app_id}", response_model=ApplicationResponse)

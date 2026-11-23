@@ -1,6 +1,6 @@
 # File-Wise Implementation Inventory
 
-Complete inventory of every implemented file across the repository as of **Cycle 4**.
+Complete inventory of every implemented file across the repository as of **Cycle 7** (All Cycles Complete).
 
 ---
 
@@ -121,4 +121,51 @@ Complete inventory of every implemented file across the repository as of **Cycle
 | [test_config_and_data.py](file:///f:/Projects/JobAutomation/backend/tests/test_config_and_data.py) | 3 | JSON file loading, `Settings` threshold override checks on Gate 1, Gate 4, and `orchestrator.ingest_job` |
 | [test_collectors.py](file:///f:/Projects/JobAutomation/backend/tests/test_collectors.py) | 19 | Location filtering, Watchlist seeding/CRUD/verify, 5 ATS connectors + Workday India fallback & incremental detail skip, 429 circuit breaker, 404 `invalid_config`, `503` retries, `409` overlap lock, closed-job pruner, stale-run recovery, resumable checkpoints, composite indexes, online snapshot, and HTTP API routes |
 | [test_applications_and_backup.py](file:///f:/Projects/JobAutomation/backend/tests/test_applications_and_backup.py) | 3 | `Discovered -> Draft -> Submitted -> Immutability -> Repost Red Banner -> Sibling Diff`, 30-day cooldown cap, and validated ZIP export/restore round-trip |
+
+---
+
+## 9. Local Web Dashboard (`frontend/` — Cycle 5)
+
+| File | Responsibility | Key Exports / Components | Tests |
+| :--- | :--- | :--- | :--- |
+| [package.json](file:///f:/Projects/JobAutomation/frontend/package.json) | React 19 + Vite + Tailwind + Vitest config | `dev`, `build`, `test` scripts | `npm run build` |
+| [vite.config.ts](file:///f:/Projects/JobAutomation/frontend/vite.config.ts) | Vite `/api` proxy & Vitest `jsdom` config | `defineConfig` | `Dashboard.test.tsx` |
+| [api/types.ts](file:///f:/Projects/JobAutomation/frontend/src/api/types.ts) | Typed REST contracts | `JobCard`, `JobDetail`, `JobDiffResponse`, `ApplicationRecord`, `FactVaultData`, `CollectorHealthResponse` | `Dashboard.test.tsx` |
+| [api/client.ts](file:///f:/Projects/JobAutomation/frontend/src/api/client.ts) | Loopback `X-Local-Token` fetch client | `api`, `apiFetch`, `getLocalToken`, `setLocalToken`, `ApiError` | `Dashboard.test.tsx` |
+| [App.tsx](file:///f:/Projects/JobAutomation/frontend/src/App.tsx) | Sidebar shell & dev token prompt | `App` | `Dashboard.test.tsx` |
+| [JobDetailDrawer.tsx](file:///f:/Projects/JobAutomation/frontend/src/components/JobDetailDrawer.tsx) | Proof table, Cross-Alerts, JD Diff & Apply bar | `JobDetailDrawer` | `Dashboard.test.tsx` |
+| [JobQueuePage.tsx](file:///f:/Projects/JobAutomation/frontend/src/pages/JobQueuePage.tsx) | Faceted queue, FTS5 search & Hidden Audit tab | `JobQueuePage` | `Dashboard.test.tsx` |
+| [ApplicationsPage.tsx](file:///f:/Projects/JobAutomation/frontend/src/pages/ApplicationsPage.tsx) | CRM stages, notes & Offline Snapshot modal | `ApplicationsPage` | `Dashboard.test.tsx` |
+| [FactVaultPage.tsx](file:///f:/Projects/JobAutomation/frontend/src/pages/FactVaultPage.tsx) | Vault form, PII-guarded Q&A & ZIP Backup/Restore | `FactVaultPage` | `Dashboard.test.tsx` |
+| [ResumesPage.tsx](file:///f:/Projects/JobAutomation/frontend/src/pages/ResumesPage.tsx) | Multi-resume PDF upload & bullet inspector | `ResumesPage` | `npm run build` |
+| [CollectorsPage.tsx](file:///f:/Projects/JobAutomation/frontend/src/pages/CollectorsPage.tsx) | Source health, progress bar & Watchlist CRUD | `CollectorsPage` | `npm run build` |
+| [Dashboard.test.tsx](file:///f:/Projects/JobAutomation/frontend/src/__tests__/Dashboard.test.tsx) | 3 Vitest component/integration specs | Tier/FTS5/Audit, Proof+Diff Drawer, CRM Snapshot + Vault | `npm test -- --run` |
+
+---
+
+## 10. Chromium MV3 Extension Core (`extension/` — Cycle 6)
+
+| File | Responsibility | Key Exports / Features | Tests |
+| :--- | :--- | :--- | :--- |
+| [manifest.json](file:///f:/Projects/JobAutomation/extension/public/manifest.json) | Manifest V3 permissions & portal matches | `sidePanel`, `activeTab`, `storage`, `127.0.0.1:8000` | Chrome unpacked load |
+| [ats_detector.ts](file:///f:/Projects/JobAutomation/extension/src/shared/ats_detector.ts) | Career page ATS token parser | `detectAtsFromUrl` (Greenhouse, Lever, Ashby, SmartRecruiters, Workday) | `extension.test.ts` |
+| [harvester.ts](file:///f:/Projects/JobAutomation/extension/src/content/harvester.ts) | On-demand portal DOM card extractor | `harvestVisibleJobs`, `extractCurrentPageContext`, `detectPortalFromUrl` | `extension.test.ts` |
+| [submit_watcher.ts](file:///f:/Projects/JobAutomation/extension/src/content/submit_watcher.ts) | Applied, Confirmation & Expired detector | `detectNativeAppliedBadge`, `detectConfirmationScreen`, `detectExpiredPosting`, `attachSubmitWatcher` | `extension.test.ts` |
+| [content/index.ts](file:///f:/Projects/JobAutomation/extension/src/content/index.ts) | Tab message listener & observer hook | `GET_PAGE_CONTEXT`, `HARVEST_VISIBLE_JOBS`, `PAGE_LIFECYCLE_EVENT` | `npm run build` |
+| [background/index.ts](file:///f:/Projects/JobAutomation/extension/src/background/index.ts) | MV3 Service Worker bridge | `API_REQUEST`, `FETCH_RESUME_PDF`, `handleLifecycleEvent` | `npm run build` |
+| [sidepanel.html](file:///f:/Projects/JobAutomation/extension/sidepanel.html) & [sidepanel/main.ts](file:///f:/Projects/JobAutomation/extension/src/sidepanel/main.ts) | Side Panel 4-State Banner UI | 4-State Banner, `+ Watch Company ATS`, `Capture Visible Jobs`, Token settings | `npm run build` |
+| [extension.test.ts](file:///f:/Projects/JobAutomation/extension/src/__tests__/extension.test.ts) | 3 Vitest + `jsdom` DOM snapshot suites | ATS detection, 6 portals harvesting, Applied/Expired guards | `npm test -- --run` |
+
+---
+
+## 11. Autofill Engine, 13 Portal Adapters & Launcher (Cycle 7)
+
+| File | Responsibility | Key Exports / Features | Tests |
+| :--- | :--- | :--- | :--- |
+| [pii_guard.ts](file:///f:/Projects/JobAutomation/extension/src/content/pii_guard.ts) | Client-side sensitive ID blocklist | `isBlockedPiiField` (PAN, Aadhaar, Passport, DoB, Bank, UAN) | `autofill.test.ts` |
+| [dom_engine.ts](file:///f:/Projects/JobAutomation/extension/src/content/dom_engine.ts) | React/Angular DOM setters & PDF inject | `setNativeInputValue`, `selectNativeOrAriaOption`, `attachResumePdf`, `highlightAmberField` | `autofill.test.ts` |
+| [adapters/types.ts](file:///f:/Projects/JobAutomation/extension/src/content/adapters/types.ts) & [adapters/index.ts](file:///f:/Projects/JobAutomation/extension/src/content/adapters/index.ts) | Adapter interfaces & 13-portal registry | `getAdapterForPortal`, `ALL_ADAPTER_NAMES` | `autofill.test.ts` |
+| `extension/src/content/adapters/*.ts` (13 files) | Isolated per-portal autofill modules | `greenhouse`, `lever`, `ashby`, `smartrecruiters`, `workday`, `naukri` (Chatbot), `linkedin`, `indeed`, `instahyre`, `foundit`, `hirist`, `cutshort`, `generic_heuristic` | `autofill.test.ts` |
+| [autofill.test.ts](file:///f:/Projects/JobAutomation/extension/src/__tests__/autofill.test.ts) | 5 Vitest + `jsdom` autofill specs | 13 adapters, Greenhouse PDF/PII/Pause, Workday+LinkedIn, Naukri Chatbot, anti-autosubmit shield | `npm test -- --run` |
+| [start.ps1](file:///f:/Projects/JobAutomation/start.ps1) | 1-click Windows startup script | Launches Uvicorn (`127.0.0.1:8000`) and opens local dashboard | Manual launch |
 
